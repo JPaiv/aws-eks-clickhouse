@@ -25,6 +25,7 @@ globals {
 }
 
 globals "tofu" {
-  required_version     = ">= 1.12.0"
-  aws_provider_version = "~> 6.0"
+  required_version      = ">= 1.12.0"
+  aws_provider_version  = "~> 6.0"
+  helm_provider_version = "~> 3.0"
 }
