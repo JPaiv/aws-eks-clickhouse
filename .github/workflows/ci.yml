@@ -1,0 +1,225 @@
+# Quality gates.
+#
+# Tool versions are read out of .devcontainer/Dockerfile rather than duplicated
+# here, so CI and the dev container can never drift apart — bumping an ARG in
+# the Dockerfile bumps CI in the same commit.
+#
+# Every gate runs even when an earlier one fails, and the results land in the
+# run summary as a table with the failing output inline. One run tells you
+# everything that is wrong, rather than one thing at a time.
+name: ci
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  pr-title:
+    name: PR title is a conventional commit
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-latest
+    steps:
+      # The repo squash-merges, so the PR title becomes the commit message that
+      # release-please parses. A malformed title silently produces a wrong
+      # version bump, so it is checked here rather than after the fact.
+      - name: Validate title
+        env:
+          TITLE: ${{ github.event.pull_request.title }}
+        run: |
+          pattern='^(feat|fix|perf|refactor|docs|test|build|ci|chore|revert)(\([a-z0-9._/-]+\))?!?: [a-z].{0,71}$'
+          if printf '%s' "${TITLE}" | grep -qE "${pattern}"; then
+            {
+              echo "## PR title"
+              echo ""
+              echo "✅ \`${TITLE}\`"
+            } >> "${GITHUB_STEP_SUMMARY}"
+          else
+            {
+              echo "## PR title"
+              echo ""
+              echo "❌ Not a valid conventional commit:"
+              echo ""
+              echo "> ${TITLE}"
+              echo ""
+              echo "Expected \`<type>(<scope>)!: <lower-case subject>\`, where type is one of"
+              echo "\`feat\` \`fix\` \`perf\` \`refactor\` \`docs\` \`test\` \`build\` \`ci\` \`chore\` \`revert\`."
+              echo ""
+              echo "See [docs/conventions/commits.md](../blob/${GITHUB_SHA}/docs/conventions/commits.md)."
+            } >> "${GITHUB_STEP_SUMMARY}"
+            exit 1
+          fi
+
+  check:
+    name: Format, lint, security
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Read pinned tool versions from the dev container
+        run: |
+          arg() {
+            sed -n "s/^ARG $1=\(.*\)$/\1/p" .devcontainer/Dockerfile | head -1
+          }
+          {
+            echo "OPENTOFU_VERSION=$(arg OPENTOFU_VERSION)"
+            echo "TERRAMATE_VERSION=$(arg TERRAMATE_VERSION)"
+            echo "TFLINT_VERSION=$(arg TFLINT_VERSION)"
+            echo "TRIVY_VERSION=$(arg TRIVY_VERSION)"
+            echo "TASK_VERSION=$(arg TASK_VERSION)"
+            echo "TERRAFORM_DOCS_VERSION=$(arg TERRAFORM_DOCS_VERSION)"
+          } | tee -a "${GITHUB_ENV}"
+
+      # Six independent downloads, each writing a distinct file into
+      # /usr/local/bin — nothing to serialise. `background: true` starts them
+      # without waiting; `wait-all` below blocks until every one has finished.
+      # The quality gates stay sequential on purpose: they need step outcomes
+      # for the summary table.
+      - name: Install OpenTofu
+        background: true
+        run: |
+          set -euo pipefail
+          curl -fsSL "https://github.com/opentofu/opentofu/releases/download/v${OPENTOFU_VERSION}/tofu_${OPENTOFU_VERSION}_linux_amd64.tar.gz" \
+            | sudo tar -xz -C /usr/local/bin tofu
+
+      - name: Install Terramate
+        background: true
+        run: |
+          set -euo pipefail
+          curl -fsSL "https://github.com/terramate-io/terramate/releases/download/v${TERRAMATE_VERSION}/terramate_${TERRAMATE_VERSION}_linux_x86_64.tar.gz" \
+            | sudo tar -xz -C /usr/local/bin terramate
+
+      - name: Install Trivy
+        background: true
+        run: |
+          set -euo pipefail
+          curl -fsSL "https://github.com/aquasecurity/trivy/releases/download/v${TRIVY_VERSION}/trivy_${TRIVY_VERSION}_Linux-64bit.tar.gz" \
+            | sudo tar -xz -C /usr/local/bin trivy
+
+      - name: Install Task
+        background: true
+        run: |
+          set -euo pipefail
+          curl -fsSL "https://github.com/go-task/task/releases/download/v${TASK_VERSION}/task_linux_amd64.tar.gz" \
+            | sudo tar -xz -C /usr/local/bin task
+
+      - name: Install terraform-docs
+        background: true
+        run: |
+          set -euo pipefail
+          curl -fsSL "https://github.com/terraform-docs/terraform-docs/releases/download/v${TERRAFORM_DOCS_VERSION}/terraform-docs-v${TERRAFORM_DOCS_VERSION}-linux-amd64.tar.gz" \
+            | sudo tar -xz -C /usr/local/bin terraform-docs
+
+      - name: Install TFLint
+        background: true
+        run: |
+          set -euo pipefail
+          curl -fsSL "https://github.com/terraform-linters/tflint/releases/download/v${TFLINT_VERSION}/tflint_linux_amd64.zip" -o /tmp/tflint.zip
+          sudo unzip -qo /tmp/tflint.zip tflint -d /usr/local/bin
+
+      - wait-all:
+
+      - name: Tool versions
+        run: task doctor 2>&1 | tee /tmp/gate-doctor.log
+
+      # Terramate-generated files are committed. If generation produces a diff,
+      # someone edited a .tm.hcl without running `task tm:generate`.
+      - name: Generated files are up to date
+        id: generate
+        continue-on-error: true
+        run: |
+          set -o pipefail
+          task tm:generate 2>&1 | tee /tmp/gate-generate.log
+          git diff --exit-code 2>&1 | tee -a /tmp/gate-generate.log
+
+      - name: Format
+        id: fmt
+        continue-on-error: true
+        run: |
+          set -o pipefail
+          task fmt:check 2>&1 | tee /tmp/gate-fmt.log
+
+      - name: Lint
+        id: lint
+        continue-on-error: true
+        run: |
+          set -o pipefail
+          task lint 2>&1 | tee /tmp/gate-lint.log
+
+      - name: Security scan
+        id: sec
+        continue-on-error: true
+        run: |
+          set -o pipefail
+          task sec 2>&1 | tee /tmp/gate-sec.log
+
+      - name: Summary
+        if: always()
+        env:
+          GENERATE: ${{ steps.generate.outcome }}
+          FMT: ${{ steps.fmt.outcome }}
+          LINT: ${{ steps.lint.outcome }}
+          SEC: ${{ steps.sec.outcome }}
+        run: |
+          failed=0
+
+          row() {
+            local name="$1" outcome="$2" hint="$3"
+            if [ "${outcome}" = "success" ]; then
+              echo "| ${name} | ✅ pass | |"
+            else
+              failed=1
+              echo "| ${name} | ❌ fail | \`${hint}\` |"
+            fi
+          }
+
+          {
+            echo "## Quality gates"
+            echo ""
+            echo "| Gate | Result | Fix locally with |"
+            echo "| --- | --- | --- |"
+            row "Terramate generation" "${GENERATE}" "task tm:generate"
+            row "Format"               "${FMT}"      "task fmt"
+            row "Lint"                 "${LINT}"     "task lint"
+            row "Security scan"        "${SEC}"      "task sec"
+            echo ""
+          } >> "${GITHUB_STEP_SUMMARY}"
+
+          # Inline the output of whatever failed, so the summary is enough to
+          # act on without opening the raw logs.
+          for gate in generate fmt lint sec; do
+            log="/tmp/gate-${gate}.log"
+            var=$(printf '%s' "${gate}" | tr '[:lower:]' '[:upper:]')
+            [ "$(eval "echo \${${var}}")" = "success" ] && continue
+            [ -s "${log}" ] || continue
+            {
+              echo "<details><summary>${gate} output</summary>"
+              echo ""
+              echo '```'
+              tail -c 40000 "${log}"
+              echo '```'
+              echo ""
+              echo "</details>"
+              echo ""
+            } >> "${GITHUB_STEP_SUMMARY}"
+          done
+
+          {
+            echo "<details><summary>Toolchain</summary>"
+            echo ""
+            echo '```'
+            cat /tmp/gate-doctor.log 2>/dev/null || echo "unavailable"
+            echo '```'
+            echo ""
+            echo "</details>"
+          } >> "${GITHUB_STEP_SUMMARY}"
+
+          exit "${failed}"

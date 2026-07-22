@@ -1,4 +1,19 @@
-# Local .terraform directories
+# Devcontainer environment — holds the AWS account/SSO values for this machine.
+# Seeded from .devcontainer/devcontainer.env.example on first container start.
+.devcontainer/devcontainer.env
+
+# Terramate
+.terramate/
+.terramate-cache/
+
+# go-task
+.task/
+
+# Kubernetes
+kubeconfig
+kubeconfig.yaml
+
+# Local .terraform / .tofu directories
 .terraform/
 
 # .tfstate files
@@ -42,3 +57,5 @@ terraform.rc
 # Optional: ignore plan files saved before destroying Terraform configuration
 # Uncomment the line below if you want to ignore planout files.
 # planout
+# Claude Code — personal per-machine overrides
+.claude/settings.local.json

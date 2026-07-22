@@ -1,0 +1,224 @@
+# Taskfile — the single entrypoint for every workflow in this repo.
+# https://taskfile.dev
+#
+#   task                 list every available command
+#   task plan            plan all stacks
+#   task plan STACK=stacks/prod/eks
+#   task plan TAGS=eks
+#   task plan CHANGED=true
+#   task plan -- -target=module.foo    extra flags go after --
+#
+# Everything runs through Terramate, which orchestrates OpenTofu across stacks.
+version: "3"
+
+silent: true
+
+set: [pipefail]
+
+# Populated by the devcontainer (docker --env-file); read directly here so the
+# same tasks work outside the container.
+dotenv: [".devcontainer/devcontainer.env"]
+
+vars:
+  # Stack selection, all optional and combinable.
+  STACK: "" # path to a single stack, e.g. stacks/prod/eks
+  TAGS: "" # terramate tag filter, e.g. eks,clickhouse
+  CHANGED: "" # "true" to limit to stacks changed vs. the base branch
+  # Terramate flags assembled from the above.
+  TM: >-
+    terramate {{if .STACK}}--chdir {{.STACK}}{{end}}
+  FILTERS: >-
+    {{if .TAGS}}--tags {{.TAGS}}{{end}} {{if eq .CHANGED "true"}}--changed{{end}}
+
+tasks:
+  default:
+    desc: List available tasks
+    cmds:
+      - task --list
+
+  # ---------------------------------------------------------------------------
+  # Environment
+  # ---------------------------------------------------------------------------
+
+  doctor:
+    desc: Print the version of every tool the stack depends on
+    cmds:
+      - 'printf "%-14s %s\n" tofu "$(tofu version | head -1)"'
+      - 'printf "%-14s %s\n" terramate "$(terramate version)"'
+      - 'printf "%-14s %s\n" tflint "$(tflint --version | head -1)"'
+      - 'printf "%-14s %s\n" trivy "$(trivy --version | head -1)"'
+      - 'printf "%-14s %s\n" aws "$(aws --version)"'
+      - 'printf "%-14s %s\n" kubectl "$(kubectl version --client -o yaml | grep gitVersion | head -1 | awk "{print \$2}")"'
+      - 'printf "%-14s %s\n" helm "$(helm version --short)"'
+      - 'printf "%-14s %s\n" argocd "$(argocd version --client --short 2>/dev/null || argocd version --client | head -1)"'
+      - 'printf "%-14s %s\n" gh "$(gh --version | head -1)"'
+      - 'printf "%-14s %s\n" task "$(task --version)"'
+
+  # ---------------------------------------------------------------------------
+  # AWS
+  # ---------------------------------------------------------------------------
+
+  aws:login:
+    desc: Start an SSO session for the configured profile
+    cmds:
+      - aws sso login
+      - task: aws:whoami
+
+  aws:logout:
+    desc: End the SSO session and clear the cached token
+    cmds:
+      - aws sso logout
+
+  aws:whoami:
+    desc: Show the identity the current credentials resolve to
+    cmds:
+      - aws sts get-caller-identity --output table
+
+  # ---------------------------------------------------------------------------
+  # Terramate
+  # ---------------------------------------------------------------------------
+
+  tm:list:
+    desc: List the stacks matching the current filters
+    cmds:
+      - "{{.TM}} list {{.FILTERS}}"
+
+  tm:generate:
+    desc: Regenerate the Terramate-managed OpenTofu files
+    cmds:
+      - "{{.TM}} generate"
+
+  tm:create:
+    desc: Create a new stack (DIR=stacks/... [NAME=...] [TAGS=a,b])
+    requires:
+      vars: [DIR]
+    cmds:
+      - >-
+        terramate create {{.DIR}}
+        {{if .NAME}}--name "{{.NAME}}"{{end}}
+        {{if .TAGS}}--tags {{.TAGS}}{{end}}
+      - task: tm:generate
+
+  # ---------------------------------------------------------------------------
+  # Quality gates
+  # ---------------------------------------------------------------------------
+
+  fmt:
+    desc: Format all Terramate and OpenTofu code
+    cmds:
+      - terramate fmt
+      - tofu fmt -recursive .
+
+  fmt:check:
+    desc: Fail if any file is not formatted
+    cmds:
+      - terramate fmt --check
+      - tofu fmt -check -recursive .
+
+  lint:
+    desc: Lint the OpenTofu code with TFLint
+    cmds:
+      - tflint --init
+      - tflint --recursive --minimum-failure-severity=warning
+
+  sec:
+    desc: Scan IaC for misconfigurations with Trivy (replaces tfsec)
+    cmds:
+      - trivy config --exit-code 1 --misconfig-scanners terraform .
+
+  docs:
+    desc: Regenerate module documentation
+    status:
+      - test ! -d modules
+    cmds:
+      - terraform-docs markdown table --recursive --output-file README.md modules
+
+  validate:
+    desc: Validate every stack
+    cmds:
+      - task: _run
+        vars: { CMD: "tofu validate" }
+
+  check:
+    desc: Run every quality gate (format, lint, security)
+    cmds:
+      - task: fmt:check
+      - task: lint
+      - task: sec
+
+  # ---------------------------------------------------------------------------
+  # Infrastructure lifecycle
+  # ---------------------------------------------------------------------------
+
+  init:
+    desc: Initialise the selected stacks
+    cmds:
+      - task: _run
+        vars: { CMD: "tofu init -input=false" }
+
+  plan:
+    desc: Plan the selected stacks
+    cmds:
+      - task: _run
+        vars: { CMD: "tofu plan -input=false -lock=false {{.CLI_ARGS}}" }
+
+  apply:
+    desc: Apply the selected stacks
+    prompt: Apply changes to {{if .STACK}}{{.STACK}}{{else}}ALL stacks{{end}}?
+    cmds:
+      - task: _run
+        vars: { CMD: "tofu apply -input=false -auto-approve {{.CLI_ARGS}}" }
+
+  destroy:
+    desc: Destroy the selected stacks (reverse order)
+    prompt: DESTROY {{if .STACK}}{{.STACK}}{{else}}ALL stacks{{end}}?
+    cmds:
+      - task: _run
+        vars:
+          CMD: "tofu destroy -input=false -auto-approve {{.CLI_ARGS}}"
+          EXTRA: "--reverse"
+
+  output:
+    desc: Show the outputs of the selected stacks
+    cmds:
+      - task: _run
+        vars: { CMD: "tofu output -json" }
+
+  _run:
+    internal: true
+    requires:
+      vars: [CMD]
+    cmds:
+      - "{{.TM}} run {{.FILTERS}} {{.EXTRA}} -- {{.CMD}}"
+
+  # ---------------------------------------------------------------------------
+  # Kubernetes
+  # ---------------------------------------------------------------------------
+
+  k8s:kubeconfig:
+    desc: Write the kubeconfig for the EKS cluster
+    cmds:
+      # CLUSTER_NAME/AWS_REGION come from devcontainer.env via dotenv above.
+      - aws eks update-kubeconfig --name "${CLUSTER_NAME:-clickhouse}" --region "${AWS_REGION:-eu-north-1}"
+      - kubectl config current-context
+
+  k8s:nodes:
+    desc: List cluster nodes
+    cmds:
+      - kubectl get nodes -o wide
+
+  k8s:pods:
+    desc: List pods across all namespaces
+    cmds:
+      - kubectl get pods -A
+
+  # ---------------------------------------------------------------------------
+  # Teardown safety net
+  # ---------------------------------------------------------------------------
+
+  nuke:
+    desc: Delete every resource in the account with cloud-nuke (DEMO ACCOUNTS ONLY)
+    prompt: This deletes EVERY resource in the account the current profile points at. Continue?
+    cmds:
+      - task: aws:whoami
+      - cloud-nuke aws --region "${AWS_REGION:-eu-north-1}"

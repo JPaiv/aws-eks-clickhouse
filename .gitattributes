@@ -1,0 +1,14 @@
+# Line endings are normalised to LF on checkout, on every platform.
+#
+# This is not cosmetic: everything in this repo runs inside a Linux container.
+# A shell script checked out with CRLF has "#!/usr/bin/env bash\r" as its
+# shebang, which fails with "bad interpreter" — so .devcontainer/post-start.sh
+# would break the container for whoever edited it from Windows.
+* text=auto eol=lf
+
+# Binary — never touch, never diff as text.
+*.gz binary
+*.zip binary
+*.png binary
+*.jpg binary
+*.ico binary
