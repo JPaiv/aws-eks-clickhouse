@@ -3,7 +3,7 @@
 #
 #   task                 list every available command
 #   task plan            plan all stacks
-#   task plan STACK=stacks/prod/eks
+#   task plan STACK=stacks/admin/eks
 #   task plan TAGS=eks
 #   task plan CHANGED=true
 #   task plan -- -target=module.foo    extra flags go after --
@@ -21,7 +21,7 @@ dotenv: [".devcontainer/devcontainer.env"]
 
 vars:
   # Stack selection, all optional and combinable.
-  STACK: "" # path to a single stack, e.g. stacks/prod/eks
+  STACK: "" # path to a single stack, e.g. stacks/admin/eks
   TAGS: "" # terramate tag filter, e.g. eks,clickhouse
   CHANGED: "" # "true" to limit to stacks changed vs. the base branch
   # Terramate flags assembled from the above.
@@ -119,7 +119,9 @@ tasks:
     desc: Lint the OpenTofu code with TFLint
     cmds:
       - tflint --init
-      - tflint --recursive --minimum-failure-severity=warning
+      # --recursive re-runs tflint per directory, which would otherwise look
+      # for a config file in each one — pin the repo-root config explicitly.
+      - tflint --recursive --minimum-failure-severity=warning --config "$(pwd)/.tflint.hcl"
 
   sec:
     desc: Scan IaC for misconfigurations with Trivy (replaces tfsec)
@@ -128,14 +130,19 @@ tasks:
 
   docs:
     desc: Regenerate module documentation
-    status:
-      - test ! -d modules
     cmds:
-      - terraform-docs markdown table --recursive --output-file README.md modules
+      # Run from the repo root: --recursive resolves its module search path
+      # relative to the target, so pointing at `modules` would look for
+      # `modules/modules`.
+      - terraform-docs markdown table --recursive --recursive-include-main=false --output-file README.md .
 
   validate:
-    desc: Validate every stack
+    desc: Validate every stack (offline — runs a backend-less init first)
     cmds:
+      # -backend=false keeps this credential-free and state-free; run
+      # `task init` again before plan/apply to restore the backend binding.
+      - task: _run
+        vars: { CMD: "tofu init -backend=false -input=false" }
       - task: _run
         vars: { CMD: "tofu validate" }
 
@@ -151,10 +158,13 @@ tasks:
   # ---------------------------------------------------------------------------
 
   init:
-    desc: Initialise the selected stacks
+    desc: Initialise the selected stacks (injects TF_STATE_BUCKET into the S3 backend)
     cmds:
+      # The generated backend blocks omit `bucket` on purpose (ADR-0010); the
+      # name comes from devcontainer.env. On the bootstrap stack (local state)
+      # the extra -backend-config produces a warning and is otherwise ignored.
       - task: _run
-        vars: { CMD: "tofu init -input=false" }
+        vars: { CMD: "tofu init -input=false {{if .TF_STATE_BUCKET}}-backend-config=bucket={{.TF_STATE_BUCKET}}{{end}} {{.CLI_ARGS}}" }
 
   plan:
     desc: Plan the selected stacks
@@ -199,7 +209,7 @@ tasks:
     desc: Write the kubeconfig for the EKS cluster
     cmds:
       # CLUSTER_NAME/AWS_REGION come from devcontainer.env via dotenv above.
-      - aws eks update-kubeconfig --name "${CLUSTER_NAME:-clickhouse}" --region "${AWS_REGION:-eu-north-1}"
+      - aws eks update-kubeconfig --name "${CLUSTER_NAME:-per-en1-admin-ack}" --region "${AWS_REGION:-eu-north-1}"
       - kubectl config current-context
 
   k8s:nodes:

@@ -16,14 +16,14 @@ Every lifecycle task accepts the same three optional filters, and they combine:
 
 | Variable       | Effect                                          | Example                    |
 | -------------- | ----------------------------------------------- | -------------------------- |
-| `STACK=<path>` | Operate on one stack (`terramate --chdir`)      | `STACK=stacks/prod/eks`    |
+| `STACK=<path>` | Operate on one stack (`terramate --chdir`)      | `STACK=stacks/admin/eks`    |
 | `TAGS=<a,b>`   | Operate on stacks carrying these Terramate tags | `TAGS=eks,clickhouse`      |
 | `CHANGED=true` | Operate only on stacks changed vs. the base ref | `CHANGED=true`             |
 
 Anything after `--` is forwarded to OpenTofu:
 
 ```bash
-task plan STACK=stacks/prod/eks -- -target=module.node_group
+task plan STACK=stacks/admin/eks -- -target=module.node_group
 ```
 
 ## Command reference
@@ -58,16 +58,18 @@ generation is what CI enforces.
 | `lint`      | `tflint --recursive`, failing on warnings and above               |
 | `sec`       | `trivy config` over the whole tree, non-zero exit on findings     |
 | `docs`      | Regenerates `README.md` in every module under `modules/`          |
-| `validate`  | `tofu validate` in every selected stack                           |
+| `validate`  | Backend-less `tofu init` + `tofu validate` in every selected stack |
 | `check`     | `fmt:check` + `lint` + `sec` — the gate CI runs                   |
 
-`docs` is a no-op until a `modules/` directory exists.
+`validate` is deliberately offline: it initialises with `-backend=false`, so
+it needs no AWS credentials and no state bucket. That init drops the backend
+binding — run `task init` again before the next `plan` or `apply`.
 
 ### Lifecycle
 
 | Task      | Does                                                                  |
 | --------- | --------------------------------------------------------------------- |
-| `init`    | `tofu init -input=false`                                              |
+| `init`    | `tofu init`, injecting `TF_STATE_BUCKET` into the S3 backend          |
 | `plan`    | `tofu plan -input=false -lock=false`                                  |
 | `apply`   | `tofu apply -auto-approve` — prompts for confirmation first           |
 | `destroy` | `tofu destroy -auto-approve` in `--reverse` stack order, prompts first |
@@ -79,7 +81,13 @@ because it never writes state — that keeps concurrent plans from blocking each
 other.
 
 `destroy` runs `--reverse` so dependent stacks are torn down before the stacks
-they depend on.
+they depend on — the state bucket goes last.
+
+The generated backend blocks deliberately omit the bucket name
+([ADR-0010](../adr/0010-remote-state-s3-native-locking.md)); `init` injects it
+from `TF_STATE_BUCKET` in `devcontainer.env`. On the bootstrap state stack —
+the one stack on local state — that extra flag prints a harmless
+"backend-config used without a backend" warning.
 
 ### Kubernetes
 
@@ -119,12 +127,19 @@ task apply CHANGED=true
 
 ```bash
 task aws:login
+task init STACK=stacks/bootstrap/state
+task apply STACK=stacks/bootstrap/state     # prints state_bucket
+# copy the state_bucket output into TF_STATE_BUCKET in .devcontainer/devcontainer.env
 task init
 task apply TAGS=network
 task apply TAGS=eks
 task k8s:kubeconfig
-task apply TAGS=clickhouse
+task k8s:nodes
 ```
+
+The bootstrap state stack is applied first and exactly once per account
+([ADR-0010](../adr/0010-remote-state-s3-native-locking.md)); everything after
+`task init` is the ordinary loop.
 
 **Tearing it back down**
 
