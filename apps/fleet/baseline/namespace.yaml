@@ -1,0 +1,9 @@
+# The fleet baseline — deployed to every fleet=spoke cluster by the
+# spoke-baseline ApplicationSet. For now: the landing zone the ClickHouse
+# workload PR will fill.
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: clickhouse
+  labels:
+    app.kubernetes.io/managed-by: argocd

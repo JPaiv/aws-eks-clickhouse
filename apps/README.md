@@ -10,6 +10,13 @@ AWS resources are created from here through the ACK controllers: IAM roles as
 boundary), Pod Identity associations as `eks.services.k8s.aws/PodIdentityAssociation`
 ([ADR-0012](../docs/adr/0012-ack-identity-fixed-point.md)).
 
+The fleet is hub-and-spoke
+([ADR-0013](../docs/adr/0013-hub-and-spoke-fleet.md)): spoke clusters are
+Git manifests here, created by the hub's ACK EKS controller. Copy a directory
+under `spokes/` to add a spoke; delete it to retire one.
+
 ```
-root/   Child Applications the root app-of-apps deploys
+root/     Child Applications the root app-of-apps deploys (controllers, spokes, ApplicationSets)
+spokes/   One directory per spoke cluster — cluster, access entries, Argo registration
+fleet/    Workloads the spoke-baseline ApplicationSet lands on every fleet=spoke cluster
 ```

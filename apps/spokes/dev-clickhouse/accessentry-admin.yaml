@@ -1,0 +1,21 @@
+# Grants the human operator's SSO role cluster-admin on this spoke, so
+# `aws eks update-kubeconfig --name per-en1-dev-clickhouse` works.
+#
+# Access-entry quirk: the principal ARN must have the IAM path STRIPPED —
+# use arn:aws:iam::<acct>:role/AWSReservedSSO_..., NOT
+# .../role/aws-reserved/sso.amazonaws.com/<region>/AWSReservedSSO_....
+# Find yours: aws sts get-caller-identity, then look up the role name.
+apiVersion: eks.services.k8s.aws/v1alpha1
+kind: AccessEntry
+metadata:
+  name: per-en1-dev-clickhouse-admin
+spec:
+  clusterName: per-en1-dev-clickhouse
+  principalARN: arn:aws:iam::<ACCOUNT_ID>:role/<SSO_ROLE_NAME>
+  type: STANDARD
+  accessPolicies:
+    - policyARN: arn:aws:eks::aws:cluster-access-policy/AmazonEKSClusterAdminPolicy
+      accessScope:
+        type: cluster
+  tags:
+    Cluster: per-en1-dev-clickhouse

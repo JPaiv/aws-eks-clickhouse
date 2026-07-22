@@ -1,0 +1,36 @@
+# Cattle targeting (ADR-0013): every cluster Secret labelled fleet=spoke gets
+# the baseline, automatically. Spin up a spoke, label its secret, and the
+# workload set lands on it — no per-spoke Application wiring.
+#
+# destination.name (not server URL) keeps this independent of the spoke's
+# late-bound endpoint.
+apiVersion: argoproj.io/v1alpha1
+kind: ApplicationSet
+metadata:
+  name: spoke-baseline
+  namespace: argocd
+spec:
+  goTemplate: true
+  generators:
+    - clusters:
+        selector:
+          matchLabels:
+            fleet: spoke
+  template:
+    metadata:
+      name: "baseline-{{.name}}"
+    spec:
+      project: default
+      source:
+        repoURL: https://github.com/JPaiv/aws-eks-clickhouse.git
+        targetRevision: HEAD
+        path: apps/fleet/baseline
+      destination:
+        name: "{{.name}}"
+        namespace: clickhouse
+      syncPolicy:
+        automated:
+          prune: true
+          selfHeal: true
+        syncOptions:
+          - CreateNamespace=true

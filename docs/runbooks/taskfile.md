@@ -148,8 +148,19 @@ task apply TAGS=network
 task apply TAGS=eks
 task k8s:kubeconfig
 task k8s:nodes
+task apply TAGS=fleet             # per-spoke IAM roles
 task apply TAGS=identity
 task apply TAGS=argocd            # needs the cluster reachable
+```
+
+Then fill the `<ACCOUNT_ID>`, `<SUBNET_ID_*>` and `<SSO_ROLE_NAME>`
+placeholders in `apps/spokes/*/` from `task output STACK=stacks/admin/fleet`,
+`task output STACK=stacks/admin/network` and `task output
+STACK=stacks/admin/identity`, commit, and restart the Argo CD pods once so
+they pick up their Pod Identity credentials:
+
+```bash
+kubectl -n argocd rollout restart deploy/argocd-server statefulset/argocd-application-controller deploy/argocd-applicationset-controller
 ```
 
 The bootstrap state stack is applied first and exactly once per account
@@ -165,17 +176,32 @@ kubectl -n ack-system get pods        # both controllers Running
 task argocd:password && task argocd:ui
 ```
 
+**Spoke convergence** ([ADR-0013](../adr/0013-hub-and-spoke-fleet.md)) — a
+spoke takes ~10–15 minutes to go ACTIVE:
+
+```bash
+task fleet:spokes                             # Cluster CRs and their state
+kubectl -n argocd get applications            # baseline-<spoke> appears via the ApplicationSet
+task k8s:kubeconfig CLUSTER=per-en1-dev-clickhouse
+kubectl get ns clickhouse                     # the baseline landed
+task fleet:harden CLUSTER=per-en1-dev-clickhouse   # then commit the caData
+```
+
 **Tearing it back down**
 
 Drain GitOps first ([ADR-0009](../adr/0009-gitops-bootstrap-boundary.md)):
-delete the root Application and wait for `ack-system` to empty, so
-ACK-managed AWS resources are deleted by their controllers rather than
-orphaned when the cluster goes away. Then:
+spokes before controllers, so ACK deletes the spoke clusters rather than
+orphaning them when the hub goes away.
 
 ```bash
+# 1. Retire the fleet: delete the spoke directories from Git (or the spokes
+#    Application) and wait until the Cluster CRs are gone.
+kubectl -n argocd delete application spokes
+task fleet:spokes                     # repeat until empty
+# 2. Then the controllers, then the bootstrap.
 kubectl -n argocd delete application root
 kubectl -n ack-system get pods -w     # wait for the controllers to drain
-task destroy                          # reverse order: argocd → identity → eks → network → state
+task destroy                          # reverse order: argocd → identity → fleet/eks → network → state
 ```
 
 ## Adding a task

@@ -1,0 +1,17 @@
+# Grants the hub's Argo CD role cluster-admin on this spoke. The role itself
+# has zero IAM permissions — this AccessEntry IS its authorization
+# (ADR-0013). Principal ARN from `task output STACK=stacks/admin/identity`.
+apiVersion: eks.services.k8s.aws/v1alpha1
+kind: AccessEntry
+metadata:
+  name: per-en1-dev-clickhouse-argocd
+spec:
+  clusterName: per-en1-dev-clickhouse
+  principalARN: arn:aws:iam::<ACCOUNT_ID>:role/per-en1-admin-ack-argocd
+  type: STANDARD
+  accessPolicies:
+    - policyARN: arn:aws:eks::aws:cluster-access-policy/AmazonEKSClusterAdminPolicy
+      accessScope:
+        type: cluster
+  tags:
+    Cluster: per-en1-dev-clickhouse

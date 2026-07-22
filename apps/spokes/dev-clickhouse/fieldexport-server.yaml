@@ -1,0 +1,20 @@
+# Writes the spoke's API endpoint into the Argo CD cluster Secret once the
+# cluster is ACTIVE — the late-bound half of the registration (ADR-0013).
+# Must live in the same namespace as the Cluster CR; the target Secret is
+# committed (FieldExport patches, it does not create).
+apiVersion: services.k8s.aws/v1alpha1
+kind: FieldExport
+metadata:
+  name: per-en1-dev-clickhouse-server
+spec:
+  from:
+    path: ".status.endpoint"
+    resource:
+      group: eks.services.k8s.aws
+      kind: Cluster
+      name: per-en1-dev-clickhouse
+  to:
+    kind: secret
+    name: cluster-per-en1-dev-clickhouse
+    namespace: argocd
+    key: server
