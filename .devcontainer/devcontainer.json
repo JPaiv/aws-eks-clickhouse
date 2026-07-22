@@ -1,0 +1,198 @@
+{
+  "name": "aws-eks-clickhouse",
+  "build": {
+    "dockerfile": "Dockerfile",
+    "args": {}
+  },
+  // Seed the git-ignored env file from the template on first start, so
+  // `--env-file` below never points at a missing path.
+  "initializeCommand": "cp -n ${localWorkspaceFolder}/.devcontainer/devcontainer.env.example ${localWorkspaceFolder}/.devcontainer/devcontainer.env 2>/dev/null || true",
+  "postStartCommand": "post-start",
+  "postCreateCommand": "docker version",
+  // The host is not assumed to hold any AWS configuration; every value comes
+  // from devcontainer.env (see devcontainer.env.example).
+  "runArgs": [
+    "--env-file",
+    "${localWorkspaceFolder}/.devcontainer/devcontainer.env"
+  ],
+  "customizations": {
+    "vscode": {
+      "settings": {
+        // Controls if quick suggestions should show up while typing
+        "editor.quickSuggestions": {
+          "other": true,
+          "comments": false,
+          "strings": false
+        },
+        // Makes VS Code Intergrated terminal to inherit local machine shell environment
+        "terminal.integrated.inheritEnv": true,
+        // Controls whether suggestions should be accepted on commit characters. For example, in JavaScript, the semi-colon (`;`) can be a commit character that accepts a suggestion and types that character.
+        "editor.acceptSuggestionOnCommitCharacter": true,
+        // Controls if suggestions should be accepted on 'Enter' - in addition to 'Tab'. Helps to avoid ambiguity between inserting new lines or accepting suggestions. The value 'smart' means only accept a suggestion with Enter when it makes a textual change
+        "editor.acceptSuggestionOnEnter": "on",
+        // Controls the delay in ms after which quick suggestions will show up.
+        "editor.quickSuggestionsDelay": 10,
+        // Controls if suggestions should automatically show up when typing trigger characters
+        "editor.suggestOnTriggerCharacters": true,
+        // Controls if pressing tab inserts the best suggestion and if tab cycles through other suggestions
+        "editor.tabCompletion": "off",
+        // Controls whether sorting favours words that appear close to the cursor
+        "editor.suggest.localityBonus": true,
+        // Controls how suggestions are pre-selected when showing the suggest list
+        "editor.suggestSelection": "first",
+        // Enable word based suggestions
+        "editor.wordBasedSuggestions": "matchingDocuments",
+        // Enable parameter hints
+        "editor.parameterHints.enabled": true,
+        // OpenTofu and Terramate both ship their own language servers; the
+        // extensions discover `tofu` and `terramate-ls` on PATH, so no explicit
+        // binary paths are configured here.
+        // Nicer default VS Code integrated terminal colors
+        "workbench.colorCustomizations": {
+          "terminal.ansiBlack": "#000000",
+          "terminal.ansiBlue": "#6FB3D2",
+          "terminal.ansiBrightBlack": "#B0B0B0",
+          "terminal.ansiBrightBlue": "#6FB3D2",
+          "terminal.ansiBrightCyan": "#76C7B7",
+          "terminal.ansiBrightGreen": "#A1C659",
+          "terminal.ansiBrightMagenta": "#D381C3",
+          "terminal.ansiBrightRed": "#FB0120",
+          "terminal.ansiBrightWhite": "#FFFFFF",
+          "terminal.ansiBrightYellow": "#FDA331",
+          "terminal.ansiCyan": "#76C7B7",
+          "terminal.ansiGreen": "#A1C659",
+          "terminal.ansiMagenta": "#D381C3",
+          "terminal.ansiRed": "#FB0120",
+          "terminal.ansiWhite": "#E0E0E0",
+          "terminal.ansiYellow": "#FDA331",
+          "terminal.background": "#000000",
+          "terminal.foreground": "#E0E0E0",
+          "terminalCursor.background": "#E0E0E0",
+          "terminalCursor.foreground": "#E0E0E0"
+        },
+        // Disable Git emojis for VS Code Conventional Commit extension
+        "conventionalCommits.gitmoji": false,
+        "[dockerfile]": {
+          "editor.formatOnSave": true,
+          "editor.defaultFormatter": "ms-azuretools.vscode-docker"
+        },
+        "[hcl]": {
+          "editor.defaultFormatter": "HashiCorp.HCL",
+          "editor.formatOnSave": true
+        },
+        "[html]": {
+          "editor.defaultFormatter": "esbenp.prettier-vscode",
+          "editor.formatOnSave": true
+        },
+        "[javascript]": {
+          "editor.defaultFormatter": "esbenp.prettier-vscode",
+          "editor.formatOnSave": true
+        },
+        "[json]": {
+          "editor.defaultFormatter": "esbenp.prettier-vscode",
+          "editor.formatOnSave": true
+        },
+        "[jsonc]": {
+          "editor.defaultFormatter": "esbenp.prettier-vscode",
+          "editor.formatOnSave": true
+        },
+        "[markdown]": {
+          "editor.formatOnSave": true,
+          "editor.defaultFormatter": "yzhang.markdown-all-in-one"
+        },
+        "[opentofu]": {
+          "editor.defaultFormatter": "OpenTofu.vscode-opentofu",
+          "editor.formatOnSave": true
+        },
+        "[opentofu-vars]": {
+          "editor.defaultFormatter": "OpenTofu.vscode-opentofu",
+          "editor.formatOnSave": true
+        },
+        "[python]": {
+          "editor.defaultFormatter": "ms-python.black-formatter",
+          "editor.formatOnSave": true
+        },
+        "[shellscript]": {
+          "editor.formatOnSave": true,
+          "editor.defaultFormatter": "foxundermoon.shell-format"
+        },
+        "[terraform]": {
+          "editor.defaultFormatter": "OpenTofu.vscode-opentofu",
+          "editor.formatOnSave": true
+        },
+        "[toml]": {
+          "editor.formatOnSave": true,
+          "editor.defaultFormatter": "tamasfe.even-better-toml"
+        },
+        "[typescript]": {
+          "editor.defaultFormatter": "esbenp.prettier-vscode",
+          "editor.formatOnSave": true
+        },
+        "[yaml]": {
+          "editor.defaultFormatter": "redhat.vscode-yaml",
+          "editor.formatOnSave": true
+        }
+      },
+      "extensions": [
+        // ---- AI ----
+        "anthropic.claude-code",
+
+        // ---- Infrastructure as Code ----
+        "OpenTofu.vscode-opentofu", // official OpenTofu LSP; replaces hashicorp.terraform
+        "Mineiros.terramate", // Terramate (publisher kept its pre-rename id)
+        "HashiCorp.HCL", // syntax for plain .hcl (.tflint.hcl, .terramate/)
+        "DerekCAshmore.terraform-docs",
+
+        // ---- Cloud & Kubernetes ----
+        "AmazonWebServices.aws-toolkit-vscode",
+        "ms-kubernetes-tools.vscode-kubernetes-tools",
+        "ms-azuretools.vscode-docker",
+
+        // ---- Security ----
+        "AquaSecurityOfficial.trivy-vulnerability-scanner", // replaces tfsec.tfsec
+
+        // ---- Build & tooling ----
+        "task.vscode-task", // Taskfile.yml support
+
+        // ---- Languages & formatting ----
+        "esbenp.prettier-vscode",
+        "foxundermoon.shell-format",
+        "redhat.vscode-yaml",
+        "tamasfe.even-better-toml",
+        "yzhang.markdown-all-in-one",
+        "ms-python.black-formatter",
+        "ms-python.flake8",
+        "ms-python.python",
+        "dbaeumer.vscode-eslint",
+        "yoavbls.pretty-ts-errors",
+
+        // ---- Git & editor ergonomics ----
+        "eamodio.gitlens",
+        "vivaxy.vscode-conventional-commits",
+        "shardulm94.trailing-spaces",
+        "Tyriar.sort-lines"
+      ]
+    }
+  },
+  "remoteUser": "root",
+  "features": {
+    "ghcr.io/devcontainers/features/common-utils:2.5.4": {
+      "gid": "1000",
+      "installZsh": "true",
+      "uid": "1000",
+      "upgradePackages": "false",
+      "username": "vscode"
+    },
+    "ghcr.io/devcontainers/features/docker-in-docker:2": {
+      "moby": false
+    },
+    "ghcr.io/devcontainers/features/git:1": {}
+  },
+  "mounts": [
+    "source=/var/run/docker.sock,target=/var/run/docker.sock,type=bind,consistency=delegated",
+    // Named volumes, so `aws sso login` and the kubeconfig survive a rebuild.
+    // Paths are $HOME for remoteUser above — keep them in sync if that changes.
+    "source=${localWorkspaceFolderBasename}-aws,target=/root/.aws,type=volume",
+    "source=${localWorkspaceFolderBasename}-kube,target=/root/.kube,type=volume"
+  ]
+}

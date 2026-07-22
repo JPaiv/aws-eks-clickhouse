@@ -1,0 +1,52 @@
+# Release automation.
+#
+# On every push to main, release-please parses the conventional commits since
+# the last release and opens (or updates) a release PR showing the version it
+# will cut and the changelog it will publish. Merging that PR tags the release.
+#
+# Nothing is released by pushing to main directly — the release PR is the
+# review gate. See docs/conventions/commits.md and ADR-0008.
+name: release-please
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: release-please
+  cancel-in-progress: false
+
+jobs:
+  release-please:
+    name: Prepare release
+    runs-on: ubuntu-latest
+    permissions:
+      # Create the release PR, the tag and the GitHub Release.
+      contents: write
+      pull-requests: write
+    steps:
+      - uses: googleapis/release-please-action@v5
+        id: release
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          config-file: release-please-config.json
+          manifest-file: .release-please-manifest.json
+
+      - name: Summary
+        if: always()
+        env:
+          RELEASED: ${{ steps.release.outputs.release_created }}
+          TAG: ${{ steps.release.outputs.tag_name }}
+          PR: ${{ steps.release.outputs.pr }}
+        run: |
+          if [ "${RELEASED}" = "true" ]; then
+            echo "Released ${TAG}" >> "${GITHUB_STEP_SUMMARY}"
+          elif [ -n "${PR}" ]; then
+            echo "Release PR updated." >> "${GITHUB_STEP_SUMMARY}"
+          else
+            echo "No releasable changes since the last release." >> "${GITHUB_STEP_SUMMARY}"
+          fi
