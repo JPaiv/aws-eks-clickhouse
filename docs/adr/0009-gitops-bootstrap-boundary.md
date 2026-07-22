@@ -1,6 +1,6 @@
 # ADR-0009 — OpenTofu bootstraps, ACK and Argo CD own day-2
 
-- **Status:** Accepted
+- **Status:** Accepted — amended by [ADR-0013](0013-hub-and-spoke-fleet.md) (single-cluster assumption: spokes are now ACK-managed from Git)
 - **Date:** 2026-07-22
 
 ## Context

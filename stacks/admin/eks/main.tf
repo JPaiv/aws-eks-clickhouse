@@ -16,5 +16,7 @@ module "eks" {
 
   cluster_name = module.label.id
   subnet_ids   = data.terraform_remote_state.network.outputs.private_subnet_ids
-  tags         = module.label.tags
+  # Cluster tag: ADR-0013's convention — every cluster-affiliated resource
+  # names the EKS cluster it belongs to.
+  tags = merge(module.label.tags, { Cluster = module.label.id })
 }

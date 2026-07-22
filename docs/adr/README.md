@@ -17,10 +17,11 @@ mark the old one **Superseded by ADR-NNNN**.
 | [0006](0006-drop-lambda-toolchain.md)            | Drop the Lambda/Rust toolchain               | Accepted |
 | [0007](0007-devcontainer-as-the-only-environment.md) | The dev container is the only environment | Accepted |
 | [0008](0008-conventional-commits-and-release-please.md) | Conventional Commits + release-please | Accepted |
-| [0009](0009-gitops-bootstrap-boundary.md)       | OpenTofu bootstraps, ACK and Argo CD own day-2 | Accepted |
+| [0009](0009-gitops-bootstrap-boundary.md)       | OpenTofu bootstraps, ACK and Argo CD own day-2 | Accepted, amended by 0013 |
 | [0010](0010-remote-state-s3-native-locking.md)  | Remote state: S3 native locking, env-supplied bucket | Accepted |
 | [0011](0011-cloudposse-null-label-naming.md)    | Resource naming via CloudPosse null-label    | Accepted |
-| [0012](0012-ack-identity-fixed-point.md)        | OpenTofu's identity fixed point: ACK iam + eks controllers | Accepted |
+| [0012](0012-ack-identity-fixed-point.md)        | OpenTofu's identity fixed point: ACK iam + eks controllers | Accepted, amended by 0013 |
+| [0013](0013-hub-and-spoke-fleet.md)             | Hub-and-spoke fleet: spoke clusters are Git manifests | Accepted |
 
 ## Format
 

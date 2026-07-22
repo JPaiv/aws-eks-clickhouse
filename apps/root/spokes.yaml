@@ -1,0 +1,36 @@
+# The fleet: every directory under apps/spokes/ is one spoke cluster
+# (ADR-0013). Copy a directory to add a spoke; delete it and Argo prunes —
+# ACK then deletes the actual cluster.
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: spokes
+  namespace: argocd
+  finalizers:
+    - resources-finalizer.argocd.argoproj.io
+spec:
+  project: default
+  source:
+    repoURL: https://github.com/JPaiv/aws-eks-clickhouse.git
+    targetRevision: HEAD
+    path: apps/spokes
+    directory:
+      recurse: true
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: spokes
+  # The `server` key of each spoke's cluster Secret is written by an ACK
+  # FieldExport once the cluster is ACTIVE. Without this, selfHeal would
+  # revert it to the committed (empty) value on every sync.
+  ignoreDifferences:
+    - kind: Secret
+      namespace: argocd
+      jsonPointers:
+        - /data/server
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+    syncOptions:
+      - CreateNamespace=true
+      - RespectIgnoreDifferences=true

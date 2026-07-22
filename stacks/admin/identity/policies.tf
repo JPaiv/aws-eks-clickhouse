@@ -76,36 +76,91 @@ data "aws_iam_policy_document" "ack_iam_controller" {
 }
 
 # -----------------------------------------------------------------------------
-# ACK EKS controller — turns Git manifests into Pod Identity associations
+# ACK EKS controller — the fleet factory (ADR-0013)
 # -----------------------------------------------------------------------------
 
-# Narrowed from ACK's recommended eks:* on "*": this controller exists solely
-# to manage Pod Identity associations on this one cluster. Cluster and node
-# group reconciliation stays in OpenTofu (ADR-0009), so ec2:DescribeSubnets
-# from the recommended policy is deliberately absent.
+# Widened from the Pod-Identity-only scope of ADR-0012: hub-and-spoke means
+# this controller creates and manages entire spoke clusters from Git. Still
+# narrowed from ACK's recommended eks:* on "*": everything is pinned to the
+# per-en1-* naming scheme, cluster creation demands the fleet tagging
+# convention, and the hub itself is protected by an explicit Deny.
 #trivy:ignore:AVD-AWS-0057
 data "aws_iam_policy_document" "ack_eks_controller" {
   statement {
-    sid = "PodIdentityAssociations"
+    sid = "FleetClusterLifecycle"
     actions = [
-      "eks:CreatePodIdentityAssociation",
-      "eks:DescribePodIdentityAssociation",
-      "eks:UpdatePodIdentityAssociation",
-      "eks:DeletePodIdentityAssociation",
-      "eks:ListPodIdentityAssociations",
       "eks:DescribeCluster",
+      "eks:DeleteCluster",
+      "eks:UpdateClusterConfig",
+      "eks:UpdateClusterVersion",
+      "eks:DescribeUpdate",
+      "eks:ListUpdates",
       "eks:TagResource",
       "eks:UntagResource",
       "eks:ListTagsForResource",
+      "eks:CreateAccessEntry",
+      "eks:ListAccessEntries",
+      "eks:CreatePodIdentityAssociation",
+      "eks:ListPodIdentityAssociations",
     ]
-    resources = [
-      "arn:aws:eks:${local.region}:${local.account_id}:cluster/${data.terraform_remote_state.eks.outputs.cluster_name}",
-      "arn:aws:eks:${local.region}:${local.account_id}:podidentityassociation/${data.terraform_remote_state.eks.outputs.cluster_name}/*",
-    ]
+    resources = ["arn:aws:eks:${local.region}:${local.account_id}:cluster/${local.namespace}-${local.environment}-*"]
   }
 
-  # PassRole is its own statement: the PassedToService condition key is absent
-  # on read calls and would deny them if merged with the statement below.
+  # Creating a cluster requires the Cluster tag (ADR-0013's tagging
+  # convention): a Git manifest that omits it gets AccessDenied, so every
+  # spoke is attributable from day one.
+  statement {
+    sid       = "CreateClusterWithClusterTag"
+    actions   = ["eks:CreateCluster"]
+    resources = ["arn:aws:eks:${local.region}:${local.account_id}:cluster/${local.namespace}-${local.environment}-*"]
+
+    condition {
+      test     = "StringLike"
+      variable = "aws:RequestTag/Cluster"
+      values   = ["${local.namespace}-${local.environment}-*"]
+    }
+  }
+
+  statement {
+    sid = "FleetAccessEntries"
+    actions = [
+      "eks:DescribeAccessEntry",
+      "eks:UpdateAccessEntry",
+      "eks:DeleteAccessEntry",
+      "eks:ListAssociatedAccessPolicies",
+      "eks:AssociateAccessPolicy",
+      "eks:DisassociateAccessPolicy",
+    ]
+    resources = ["arn:aws:eks:${local.region}:${local.account_id}:access-entry/${local.namespace}-${local.environment}-*/*"]
+  }
+
+  statement {
+    sid = "FleetPodIdentityAssociations"
+    actions = [
+      "eks:DescribePodIdentityAssociation",
+      "eks:UpdatePodIdentityAssociation",
+      "eks:DeletePodIdentityAssociation",
+    ]
+    resources = ["arn:aws:eks:${local.region}:${local.account_id}:podidentityassociation/${local.namespace}-${local.environment}-*/*"]
+  }
+
+  # The hub must not be mutable from Git: the per-en1-* wildcard above would
+  # match it, so the destructive actions are explicitly denied on it.
+  # Pod Identity associations ON the hub remain allowed — that is the fixed
+  # point working as designed.
+  statement {
+    sid    = "ProtectTheHub"
+    effect = "Deny"
+    actions = [
+      "eks:DeleteCluster",
+      "eks:UpdateClusterConfig",
+      "eks:UpdateClusterVersion",
+    ]
+    resources = ["arn:aws:eks:${local.region}:${local.account_id}:cluster/${data.terraform_remote_state.eks.outputs.cluster_name}"]
+  }
+
+  # PassRole is its own statement per condition key: absent on read calls,
+  # a merged statement would deny them.
   statement {
     sid       = "PassAckRolesToPodIdentity"
     actions   = ["iam:PassRole"]
@@ -118,6 +173,23 @@ data "aws_iam_policy_document" "ack_eks_controller" {
     }
   }
 
+  # Spoke creation passes the per-spoke fleet roles (stacks/admin/fleet) to
+  # the EKS service.
+  statement {
+    sid     = "PassFleetRolesToEks"
+    actions = ["iam:PassRole"]
+    resources = concat(
+      values(data.terraform_remote_state.fleet.outputs.spoke_cluster_role_arns),
+      values(data.terraform_remote_state.fleet.outputs.spoke_node_role_arns),
+    )
+
+    condition {
+      test     = "StringEquals"
+      variable = "iam:PassedToService"
+      values   = ["eks.amazonaws.com"]
+    }
+  }
+
   statement {
     sid = "ReadAckRoles"
     actions = [
@@ -125,6 +197,30 @@ data "aws_iam_policy_document" "ack_eks_controller" {
       "iam:ListAttachedRolePolicies",
     ]
     resources = ["arn:aws:iam::${local.account_id}:role/ack/*"]
+  }
+
+  # Cluster creation validates the shared-VPC networking, and the first EKS
+  # cluster created by a principal may create the service-linked role.
+  statement {
+    sid = "NetworkReads"
+    actions = [
+      "ec2:DescribeSubnets",
+      "ec2:DescribeVpcs",
+      "ec2:DescribeSecurityGroups",
+    ]
+    resources = ["*"]
+  }
+
+  statement {
+    sid       = "EksServiceLinkedRole"
+    actions   = ["iam:CreateServiceLinkedRole"]
+    resources = ["arn:aws:iam::${local.account_id}:role/aws-service-role/eks.amazonaws.com/*"]
+
+    condition {
+      test     = "StringEquals"
+      variable = "iam:AWSServiceName"
+      values   = ["eks.amazonaws.com"]
+    }
   }
 }
 
@@ -193,5 +289,5 @@ resource "aws_iam_policy" "boundary" {
   description = "Permissions boundary required on every ACK-created role (ADR-0012)"
   policy      = data.aws_iam_policy_document.boundary.json
 
-  tags = module.boundary_label.tags
+  tags = merge(module.boundary_label.tags, local.cluster_tag)
 }

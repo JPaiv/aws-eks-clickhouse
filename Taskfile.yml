@@ -206,10 +206,11 @@ tasks:
   # ---------------------------------------------------------------------------
 
   k8s:kubeconfig:
-    desc: Write the kubeconfig for the EKS cluster
+    desc: Write the kubeconfig for an EKS cluster (CLUSTER=... for a spoke; defaults to the hub)
     cmds:
-      # CLUSTER_NAME/AWS_REGION come from devcontainer.env via dotenv above.
-      - aws eks update-kubeconfig --name "${CLUSTER_NAME:-per-en1-admin-ack}" --region "${AWS_REGION:-eu-north-1}"
+      # CLUSTER_NAME/AWS_REGION come from devcontainer.env via dotenv above;
+      # CLUSTER overrides per invocation, e.g. CLUSTER=per-en1-dev-clickhouse.
+      - aws eks update-kubeconfig --name "{{if .CLUSTER}}{{.CLUSTER}}{{else}}${CLUSTER_NAME:-per-en1-admin-ack}{{end}}" --region "${AWS_REGION:-eu-north-1}"
       - kubectl config current-context
 
   k8s:nodes:
@@ -236,6 +237,24 @@ tasks:
     desc: Port-forward the Argo CD UI to https://localhost:8080 (user admin)
     cmds:
       - kubectl -n argocd port-forward svc/argocd-server 8080:443
+
+  # ---------------------------------------------------------------------------
+  # Fleet
+  # ---------------------------------------------------------------------------
+
+  fleet:spokes:
+    desc: List the spoke clusters and their reconciliation state
+    cmds:
+      - kubectl -n spokes get clusters.eks.services.k8s.aws -o wide
+
+  fleet:harden:
+    desc: Print a spoke's CA data to commit into its cluster-secret (CLUSTER=...)
+    requires:
+      vars: [CLUSTER]
+    cmds:
+      - 'echo "Commit this as tlsClientConfig: caData in apps/spokes/<spoke>/cluster-secret.yaml,"'
+      - 'echo "and flip insecure to false:"'
+      - aws eks describe-cluster --name "{{.CLUSTER}}" --query 'cluster.certificateAuthority.data' --output text
 
   # ---------------------------------------------------------------------------
   # Teardown safety net

@@ -11,9 +11,10 @@ The rule that decides which system owns what: **if the cluster must have it in
 order to start reconciling, OpenTofu owns it; everything else is a manifest in
 Git.** ([ADR-0009](docs/adr/0009-gitops-bootstrap-boundary.md))
 
-> **Status:** the bootstrap is complete — remote state, VPC, EKS, the ACK
-> identity fixed point and Argo CD. The ClickHouse data plane arrives via
-> GitOps next. See [Roadmap](#roadmap).
+> **Status:** the bootstrap is complete and the fleet is hub-and-spoke — the
+> admin cluster creates worker clusters from Git manifests
+> ([ADR-0013](docs/adr/0013-hub-and-spoke-fleet.md)). The ClickHouse data
+> plane lands on the spokes next. See [Roadmap](#roadmap).
 
 ## What this is
 
@@ -90,11 +91,14 @@ stacks/
   bootstrap/state  Remote-state bucket (the one local-state stack)
   admin/network    VPC for the admin cluster
   admin/eks        EKS — the ACK admin cluster (per-en1-admin-ack)
-  admin/identity   Pod Identity fixed point: ACK iam+eks roles, boundary
+  admin/identity   Pod Identity fixed point: ACK iam+eks roles, boundary, Argo CD role
+  admin/fleet      Per-spoke IAM roles — one list entry per spoke cluster
   admin/argocd     Argo CD install and the root Application
 modules/           Hand-written OpenTofu modules: vpc, eks
 apps/
   root/            Child Applications the root app-of-apps deploys
+  spokes/          One directory per spoke cluster — the fleet, as Git manifests
+  fleet/           Baseline workloads landed on every spoke by ApplicationSet
 Taskfile.yml       The only command interface
 ```
 
@@ -124,6 +128,7 @@ Each of these is an ADR with the context, the trade-off and what it costs:
 - [ADR-0010](docs/adr/0010-remote-state-s3-native-locking.md) — Remote state: S3 native locking, env-supplied bucket
 - [ADR-0011](docs/adr/0011-cloudposse-null-label-naming.md) — Resource naming via CloudPosse null-label
 - [ADR-0012](docs/adr/0012-ack-identity-fixed-point.md) — OpenTofu's identity fixed point: ACK iam + eks controllers
+- [ADR-0013](docs/adr/0013-hub-and-spoke-fleet.md) — Hub-and-spoke fleet: spoke clusters are Git manifests
 
 ## Roadmap
 
@@ -146,6 +151,7 @@ Each of these is an ADR with the context, the trade-off and what it costs:
 **GitOps — Argo CD / ACK**
 
 - [x] ACK iam + eks controllers — the identity fixed point, reconciled from `apps/root`
+- [x] Hub-and-spoke fleet — spoke clusters (EKS Auto Mode) as Git manifests, first spoke `per-en1-dev-clickhouse`
 - [ ] ACK controllers — S3 and whatever else ClickHouse turns out to need (via Git)
 - [ ] ClickHouse Keeper ensemble
 - [ ] ClickHouse cluster — sharding, replication, S3-backed storage

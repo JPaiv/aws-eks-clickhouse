@@ -1,6 +1,6 @@
 # ADR-0012 — OpenTofu's identity fixed point: the ACK iam and eks controllers
 
-- **Status:** Accepted
+- **Status:** Accepted — amended by [ADR-0013](0013-hub-and-spoke-fleet.md) (the EKS controller scope grew from associations-only to fleet lifecycle; the fixed point itself is unchanged)
 - **Date:** 2026-07-22
 
 ## Context

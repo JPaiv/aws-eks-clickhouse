@@ -31,3 +31,12 @@ module "boundary_label" {
   context    = module.label.context
   attributes = ["boundary"]
 }
+
+# per-en1-admin-ack-argocd — the identity hub Argo CD deploys into spokes
+# with (ADR-0013).
+module "argocd_label" {
+  source = "git::https://github.com/cloudposse/terraform-null-label.git?ref=0.25.0"
+
+  context    = module.label.context
+  attributes = ["argocd"]
+}

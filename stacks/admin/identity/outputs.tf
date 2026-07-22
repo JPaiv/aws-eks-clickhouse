@@ -21,3 +21,8 @@ output "ack_policy_path" {
   description = "IAM path ACK-created customer-managed policies must live under"
   value       = "/ack/"
 }
+
+output "argocd_role_arn" {
+  description = "IAM role Argo CD authenticates to spokes with — the principal of every spoke's argocd AccessEntry manifest"
+  value       = aws_iam_role.argocd.arn
+}
