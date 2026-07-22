@@ -11,8 +11,9 @@ The rule that decides which system owns what: **if the cluster must have it in
 order to start reconciling, OpenTofu owns it; everything else is a manifest in
 Git.** ([ADR-0009](docs/adr/0009-gitops-bootstrap-boundary.md))
 
-> **Status:** toolchain and workflow are in place; the infrastructure code is
-> being built. See [Roadmap](#roadmap).
+> **Status:** the bootstrap stacks (remote state, VPC, EKS) are in place;
+> Pod Identity, Argo CD and the GitOps layer are being built. See
+> [Roadmap](#roadmap).
 
 ## What this is
 
@@ -57,7 +58,7 @@ to every lifecycle command:
 
 ```bash
 task plan                             # all stacks
-task plan STACK=stacks/prod/eks       # one stack
+task plan STACK=stacks/admin/eks       # one stack
 task plan TAGS=eks,clickhouse         # by Terramate tag
 task plan CHANGED=true                # only what changed vs. the base branch
 task plan -- -target=module.node_group  # pass flags straight to OpenTofu
@@ -85,11 +86,20 @@ docs/
   adr/             Architecture decision records
   conventions/     Commit format
   runbooks/        Dev container and Taskfile runbooks
-stacks/            Terramate bootstrap stacks                    — in progress
-modules/           Reusable OpenTofu modules                     — in progress
+stacks/
+  bootstrap/state  Remote-state bucket (the one local-state stack)
+  admin/network    VPC for the admin cluster
+  admin/eks        EKS — the ACK admin cluster (per-en1-admin-ack)
+modules/           Hand-written OpenTofu modules: vpc, eks
 apps/              Argo CD Applications and ACK manifests        — in progress
 Taskfile.yml       The only command interface
 ```
+
+Names follow the CloudPosse null-label scheme
+`<namespace>-<environment>-<stage>-<name>`
+([ADR-0011](docs/adr/0011-cloudposse-null-label-naming.md)): the admin
+cluster is `per-en1-admin-ack`, and the ClickHouse cluster it will provision
+is `per-en1-dev-clickhouse`.
 
 `stacks/` stops where GitOps starts. Anything under `apps/` is reconciled by
 Argo CD and never appears in a `tofu plan`.
@@ -108,6 +118,8 @@ Each of these is an ADR with the context, the trade-off and what it costs:
 - [ADR-0007](docs/adr/0007-devcontainer-as-the-only-environment.md) — The dev container is the only supported environment
 - [ADR-0008](docs/adr/0008-conventional-commits-and-release-please.md) — Conventional Commits and release-please
 - [ADR-0009](docs/adr/0009-gitops-bootstrap-boundary.md) — OpenTofu bootstraps, ACK and Argo CD own day-2
+- [ADR-0010](docs/adr/0010-remote-state-s3-native-locking.md) — Remote state: S3 native locking, env-supplied bucket
+- [ADR-0011](docs/adr/0011-cloudposse-null-label-naming.md) — Resource naming via CloudPosse null-label
 
 ## Roadmap
 
@@ -121,9 +133,9 @@ Each of these is an ADR with the context, the trade-off and what it costs:
 
 **Bootstrap — OpenTofu / Terramate**
 
-- [ ] Remote state backend (S3 with native `use_lockfile` locking)
-- [ ] Network stack — VPC, subnets, endpoints
-- [ ] EKS cluster stack — control plane, bootstrap node group
+- [x] Remote state backend (S3 with native `use_lockfile` locking)
+- [x] Network stack — VPC, subnets, endpoints
+- [x] EKS cluster stack — control plane, bootstrap node group, Pod Identity agent
 - [ ] EKS Pod Identity for the ACK controllers and Argo CD
 - [ ] Argo CD install and the root Application
 

@@ -33,6 +33,19 @@ if command -v devcontainer-info >/dev/null 2>&1; then
 fi
 
 # -----------------------------------------------------------------------------
+# Git
+# -----------------------------------------------------------------------------
+
+# On a Windows-mounted workspace (9p) every file appears owned by a foreign
+# uid, and git's safe.directory protection then refuses to operate on nested
+# clones — which breaks `tofu init` for git-sourced modules (go-getter clones
+# into .terraform/modules/ and its follow-up checkout dies with "dubious
+# ownership", surfaced as "invalid ref"). The devcontainer tooling already
+# trusts the workspace root; the wildcard extends that to everything below it.
+git config --global --add safe.directory "${PWD}"
+git config --global --add safe.directory "${PWD}/*"
+
+# -----------------------------------------------------------------------------
 # AWS profile
 # -----------------------------------------------------------------------------
 
