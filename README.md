@@ -11,9 +11,9 @@ The rule that decides which system owns what: **if the cluster must have it in
 order to start reconciling, OpenTofu owns it; everything else is a manifest in
 Git.** ([ADR-0009](docs/adr/0009-gitops-bootstrap-boundary.md))
 
-> **Status:** the bootstrap stacks (remote state, VPC, EKS) are in place;
-> Pod Identity, Argo CD and the GitOps layer are being built. See
-> [Roadmap](#roadmap).
+> **Status:** the bootstrap is complete — remote state, VPC, EKS, the ACK
+> identity fixed point and Argo CD. The ClickHouse data plane arrives via
+> GitOps next. See [Roadmap](#roadmap).
 
 ## What this is
 
@@ -90,8 +90,11 @@ stacks/
   bootstrap/state  Remote-state bucket (the one local-state stack)
   admin/network    VPC for the admin cluster
   admin/eks        EKS — the ACK admin cluster (per-en1-admin-ack)
+  admin/identity   Pod Identity fixed point: ACK iam+eks roles, boundary
+  admin/argocd     Argo CD install and the root Application
 modules/           Hand-written OpenTofu modules: vpc, eks
-apps/              Argo CD Applications and ACK manifests        — in progress
+apps/
+  root/            Child Applications the root app-of-apps deploys
 Taskfile.yml       The only command interface
 ```
 
@@ -120,6 +123,7 @@ Each of these is an ADR with the context, the trade-off and what it costs:
 - [ADR-0009](docs/adr/0009-gitops-bootstrap-boundary.md) — OpenTofu bootstraps, ACK and Argo CD own day-2
 - [ADR-0010](docs/adr/0010-remote-state-s3-native-locking.md) — Remote state: S3 native locking, env-supplied bucket
 - [ADR-0011](docs/adr/0011-cloudposse-null-label-naming.md) — Resource naming via CloudPosse null-label
+- [ADR-0012](docs/adr/0012-ack-identity-fixed-point.md) — OpenTofu's identity fixed point: ACK iam + eks controllers
 
 ## Roadmap
 
@@ -136,12 +140,13 @@ Each of these is an ADR with the context, the trade-off and what it costs:
 - [x] Remote state backend (S3 with native `use_lockfile` locking)
 - [x] Network stack — VPC, subnets, endpoints
 - [x] EKS cluster stack — control plane, bootstrap node group, Pod Identity agent
-- [ ] EKS Pod Identity for the ACK controllers and Argo CD
-- [ ] Argo CD install and the root Application
+- [x] EKS Pod Identity for the ACK iam + eks controllers ([ADR-0012](docs/adr/0012-ack-identity-fixed-point.md))
+- [x] Argo CD install and the root Application
 
 **GitOps — Argo CD / ACK**
 
-- [ ] ACK controllers — S3, IAM, and whatever ClickHouse turns out to need
+- [x] ACK iam + eks controllers — the identity fixed point, reconciled from `apps/root`
+- [ ] ACK controllers — S3 and whatever else ClickHouse turns out to need (via Git)
 - [ ] ClickHouse Keeper ensemble
 - [ ] ClickHouse cluster — sharding, replication, S3-backed storage
 - [ ] Observability — metrics, logs, dashboards

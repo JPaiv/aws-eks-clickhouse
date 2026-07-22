@@ -25,7 +25,12 @@ generate_hcl "_terramate_generated_backend.tf" {
   }
 }
 
+# A module may declare required_providers exactly once, so the two variants
+# below share a filename and select on the `argocd` tag: stacks driving the
+# cluster over the Kubernetes API get helm alongside aws.
 generate_hcl "_terramate_generated_provider.tf" {
+  condition = !tm_contains(terramate.stack.tags, "argocd")
+
   content {
     terraform {
       required_version = global.tofu.required_version
@@ -34,6 +39,35 @@ generate_hcl "_terramate_generated_provider.tf" {
         aws = {
           source  = "hashicorp/aws"
           version = global.tofu.aws_provider_version
+        }
+      }
+    }
+
+    provider "aws" {
+      region = global.region
+
+      default_tags {
+        tags = global.tags
+      }
+    }
+  }
+}
+
+generate_hcl "_terramate_generated_provider.tf" {
+  condition = tm_contains(terramate.stack.tags, "argocd")
+
+  content {
+    terraform {
+      required_version = global.tofu.required_version
+
+      required_providers {
+        aws = {
+          source  = "hashicorp/aws"
+          version = global.tofu.aws_provider_version
+        }
+        helm = {
+          source  = "hashicorp/helm"
+          version = global.tofu.helm_provider_version
         }
       }
     }

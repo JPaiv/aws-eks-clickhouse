@@ -20,6 +20,7 @@ mark the old one **Superseded by ADR-NNNN**.
 | [0009](0009-gitops-bootstrap-boundary.md)       | OpenTofu bootstraps, ACK and Argo CD own day-2 | Accepted |
 | [0010](0010-remote-state-s3-native-locking.md)  | Remote state: S3 native locking, env-supplied bucket | Accepted |
 | [0011](0011-cloudposse-null-label-naming.md)    | Resource naming via CloudPosse null-label    | Accepted |
+| [0012](0012-ack-identity-fixed-point.md)        | OpenTofu's identity fixed point: ACK iam + eks controllers | Accepted |
 
 ## Format
 

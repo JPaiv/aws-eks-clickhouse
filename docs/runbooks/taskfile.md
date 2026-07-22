@@ -101,6 +101,19 @@ the one stack on local state — that extra flag prints a harmless
 which the Taskfile loads via `dotenv` — so the same tasks work outside the
 container as long as that file exists.
 
+### Argo CD
+
+| Task              | Does                                                       |
+| ----------------- | ---------------------------------------------------------- |
+| `argocd:password` | Prints the initial admin password for the UI               |
+| `argocd:ui`       | Port-forwards the UI to `https://localhost:8080`           |
+
+The Argo CD server is ClusterIP-only; the port-forward is the supported way
+in. Log in as `admin` with the password from `argocd:password`.
+
+Note: `plan`/`apply` on `stacks/admin/argocd` need the cluster reachable —
+the helm provider dials the API server. Every other stack plans offline.
+
 ### Teardown
 
 | Task   | Does                                                                |
@@ -135,16 +148,34 @@ task apply TAGS=network
 task apply TAGS=eks
 task k8s:kubeconfig
 task k8s:nodes
+task apply TAGS=identity
+task apply TAGS=argocd            # needs the cluster reachable
 ```
 
 The bootstrap state stack is applied first and exactly once per account
 ([ADR-0010](../adr/0010-remote-state-s3-native-locking.md)); everything after
 `task init` is the ordinary loop.
 
-**Tearing it back down**
+After the argocd apply, Git takes over
+([ADR-0009](../adr/0009-gitops-bootstrap-boundary.md)). Convergence check:
 
 ```bash
-task destroy
+kubectl -n argocd get applications    # root + ack controllers → Synced/Healthy
+kubectl -n ack-system get pods        # both controllers Running
+task argocd:password && task argocd:ui
+```
+
+**Tearing it back down**
+
+Drain GitOps first ([ADR-0009](../adr/0009-gitops-bootstrap-boundary.md)):
+delete the root Application and wait for `ack-system` to empty, so
+ACK-managed AWS resources are deleted by their controllers rather than
+orphaned when the cluster goes away. Then:
+
+```bash
+kubectl -n argocd delete application root
+kubectl -n ack-system get pods -w     # wait for the controllers to drain
+task destroy                          # reverse order: argocd → identity → eks → network → state
 ```
 
 ## Adding a task

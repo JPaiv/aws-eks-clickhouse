@@ -1,0 +1,36 @@
+# ACK EKS controller — turns Git manifests into Pod Identity associations,
+# closing the identity fixed point with the IAM controller (ADR-0012).
+#
+# aws.region is hardcoded: Terramate globals do not reach Git-land, and this
+# file is reconciled by Argo CD, not OpenTofu.
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: ack-eks-controller
+  namespace: argocd
+  finalizers:
+    - resources-finalizer.argocd.argoproj.io
+spec:
+  project: default
+  source:
+    # OCI Helm registry: no scheme in repoURL, chart named separately.
+    repoURL: public.ecr.aws/aws-controllers-k8s
+    chart: eks-chart
+    targetRevision: 1.16.3
+    helm:
+      valuesObject:
+        aws:
+          region: eu-north-1
+        # Must match the Pod Identity association created by
+        # stacks/admin/identity — the contract that gives this pod its role.
+        serviceAccount:
+          name: ack-eks-controller
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: ack-system
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+    syncOptions:
+      - CreateNamespace=true

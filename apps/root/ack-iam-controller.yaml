@@ -1,0 +1,36 @@
+# ACK IAM controller — creates the IAM roles Git asks for, constrained to the
+# /ack/ path and the OpenTofu-owned permissions boundary (ADR-0012).
+#
+# aws.region is hardcoded: Terramate globals do not reach Git-land, and this
+# file is reconciled by Argo CD, not OpenTofu.
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: ack-iam-controller
+  namespace: argocd
+  finalizers:
+    - resources-finalizer.argocd.argoproj.io
+spec:
+  project: default
+  source:
+    # OCI Helm registry: no scheme in repoURL, chart named separately.
+    repoURL: public.ecr.aws/aws-controllers-k8s
+    chart: iam-chart
+    targetRevision: 1.7.3
+    helm:
+      valuesObject:
+        aws:
+          region: eu-north-1
+        # Must match the Pod Identity association created by
+        # stacks/admin/identity — the contract that gives this pod its role.
+        serviceAccount:
+          name: ack-iam-controller
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: ack-system
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+    syncOptions:
+      - CreateNamespace=true
