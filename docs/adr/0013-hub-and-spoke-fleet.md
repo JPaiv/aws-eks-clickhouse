@@ -84,6 +84,30 @@ The load-bearing choices:
 - Argo CD pods must be restarted once after the identity apply to pick up
   their Pod Identity credentials — a runbook step, not automation.
 
+## Deferred — one account per stage
+
+Everything here lives in a single sandbox account; a production estate would
+put dev spokes in a dev account, prod in prod, with the hub in a
+shared-services account. The design mostly survives that move, but three
+load-bearing choices do not, and the divergence is deliberate:
+
+- **ACK goes cross-account via CARM**, not new machinery: a ConfigMap maps
+  namespaces to target account ids and the controller assumes a per-account
+  role. `apps/spokes/` keeps the same Git model with a
+  namespace-per-account convention.
+- **The shared hub VPC dies.** Subnet sharing across accounts (RAM) is not
+  worth its edges for EKS; per-account spokes mean per-account VPCs, and
+  the NAT bill this ADR dodges comes back per account. That is the
+  isolation-is-a-requirement case this ADR already reserves.
+- **The IAM fixed point multiplies.** The fleet role pairs and the
+  permissions boundary get stamped per member account — bootstrap stacks
+  parameterized by account — while SSO permission sets stay the human
+  access layer.
+
+The naming scheme already carries the stage (`per-en1-dev-*`,
+`per-en1-prod-*`) and state buckets are account-derived, so neither needs
+to change. Revisit as its own ADR if this stack ever gets a second account.
+
 ## Alternatives considered
 
 - **Self-hosted Karpenter per spoke.** No management fee and full version
