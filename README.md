@@ -129,6 +129,7 @@ Each of these is an ADR with the context, the trade-off and what it costs:
 - [ADR-0011](docs/adr/0011-cloudposse-null-label-naming.md) — Resource naming via CloudPosse null-label
 - [ADR-0012](docs/adr/0012-ack-identity-fixed-point.md) — OpenTofu's identity fixed point: ACK iam + eks controllers
 - [ADR-0013](docs/adr/0013-hub-and-spoke-fleet.md) — Hub-and-spoke fleet: spoke clusters are Git manifests
+- [ADR-0014](docs/adr/0014-centralized-observability-on-the-hub.md) — Centralized observability: the hub watches, the spokes ship
 
 ## Roadmap
 
@@ -155,7 +156,7 @@ Each of these is an ADR with the context, the trade-off and what it costs:
 - [ ] ACK controllers — S3 and whatever else ClickHouse turns out to need (via Git)
 - [ ] ClickHouse Keeper ensemble
 - [ ] ClickHouse cluster — sharding, replication, S3-backed storage
-- [ ] Observability — metrics, logs, dashboards
+- [ ] Observability — Alloy on every spoke shipping to VictoriaMetrics + VictoriaLogs on the hub ([ADR-0014](docs/adr/0014-centralized-observability-on-the-hub.md))
 - [ ] Teardown ordering — drain Applications before `task destroy`
 
 ## License
