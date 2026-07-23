@@ -7,7 +7,7 @@ metadata:
   name: per-en1-dev-clickhouse-argocd
 spec:
   clusterName: per-en1-dev-clickhouse
-  principalARN: arn:aws:iam::<ACCOUNT_ID>:role/per-en1-admin-ack-argocd
+  principalARN: arn:aws:iam::128990654954:role/per-en1-admin-ack-argocd
   type: STANDARD
   accessPolicies:
     - policyARN: arn:aws:eks::aws:cluster-access-policy/AmazonEKSClusterAdminPolicy
