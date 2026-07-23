@@ -1,0 +1,37 @@
+# Altinity clickhouse-operator on every spoke (same cattle targeting as
+# spoke-baseline): the operator must run where the ClickHouseKeeper- and
+# ClickHouseInstallations live, and its chart ships the CRDs the baseline's
+# manifests need — the baseline app errors until this lands, then converges.
+#
+# destination.name (not server URL) keeps this independent of the spoke's
+# late-bound endpoint.
+apiVersion: argoproj.io/v1alpha1
+kind: ApplicationSet
+metadata:
+  name: spoke-clickhouse-operator
+  namespace: argocd
+spec:
+  goTemplate: true
+  generators:
+    - clusters:
+        selector:
+          matchLabels:
+            fleet: spoke
+  template:
+    metadata:
+      name: "chop-{{.name}}"
+    spec:
+      project: default
+      source:
+        repoURL: https://altinity.github.io/clickhouse-operator
+        chart: altinity-clickhouse-operator
+        targetRevision: 0.27.2
+      destination:
+        name: "{{.name}}"
+        namespace: clickhouse-operator
+      syncPolicy:
+        automated:
+          prune: true
+          selfHeal: true
+        syncOptions:
+          - CreateNamespace=true

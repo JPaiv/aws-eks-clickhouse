@@ -1,0 +1,18 @@
+# The spoke's usable StorageClass. Auto Mode clusters are born with a `gp2`
+# class on the legacy in-tree provisioner (kubernetes.io/aws-ebs), which Auto
+# Mode cannot serve — PVCs against it pend forever. Auto Mode's block storage
+# capability speaks ebs.csi.eks.amazonaws.com, so the data plane gets its own
+# default: gp3, encrypted, expandable.
+apiVersion: storage.k8s.io/v1
+kind: StorageClass
+metadata:
+  name: gp3
+  annotations:
+    storageclass.kubernetes.io/is-default-class: "true"
+provisioner: ebs.csi.eks.amazonaws.com
+volumeBindingMode: WaitForFirstConsumer
+allowVolumeExpansion: true
+reclaimPolicy: Delete
+parameters:
+  type: gp3
+  encrypted: "true"
