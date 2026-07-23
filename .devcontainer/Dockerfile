@@ -17,6 +17,7 @@ ARG AWS_CLI_VERSION=2.35.21
 ARG KUBECTL_VERSION=1.36.2
 ARG HELM_VERSION=4.2.3
 ARG ARGOCD_VERSION=3.4.5
+ARG K9S_VERSION=0.51.0
 ARG GH_VERSION=2.96.0
 
 RUN apt-get update \
@@ -102,6 +103,11 @@ RUN curl -fsSL "https://get.helm.sh/helm-v${HELM_VERSION}-linux-amd64.tar.gz" -o
 # Argo CD CLI — app sync/status and `argocd app diff` against the cluster
 RUN curl -fsSL "https://github.com/argoproj/argo-cd/releases/download/v${ARGOCD_VERSION}/argocd-linux-amd64" -o /usr/local/bin/argocd \
     && chmod 755 /usr/local/bin/argocd
+
+# k9s — terminal UI over the kubeconfig contexts kubectl already uses
+RUN curl -fsSL "https://github.com/derailed/k9s/releases/download/v${K9S_VERSION}/k9s_Linux_amd64.tar.gz" -o k9s.tar.gz \
+    && tar -xzf k9s.tar.gz -C /usr/local/bin k9s \
+    && rm k9s.tar.gz
 
 # -----------------------------------------------------------------------------
 # SOURCE CONTROL

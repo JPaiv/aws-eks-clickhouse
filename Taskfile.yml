@@ -51,6 +51,7 @@ tasks:
       - 'printf "%-14s %s\n" kubectl "$(kubectl version --client -o yaml | grep gitVersion | head -1 | awk "{print \$2}")"'
       - 'printf "%-14s %s\n" helm "$(helm version --short)"'
       - 'printf "%-14s %s\n" argocd "$(argocd version --client --short 2>/dev/null || argocd version --client | head -1)"'
+      - 'printf "%-14s %s\n" k9s "$(k9s version --short | grep -i version | head -1)"'
       - 'printf "%-14s %s\n" gh "$(gh --version | head -1)"'
       - 'printf "%-14s %s\n" task "$(task --version)"'
 

@@ -21,6 +21,7 @@ what is deliberately absent.
 | `kubectl`        | 1.36.2  | Kubernetes CLI                                   |
 | `helm`           | 4.2.3   | ClickHouse operator / ACK controller installs    |
 | `argocd`         | 3.4.5   | Argo CD app sync, status and diff                |
+| `k9s`            | 0.51.0  | Terminal UI for cluster inspection               |
 | `gh`             | 2.96.0  | Pull requests, release PRs, CI run inspection    |
 | `cloud-nuke`     | 0.41.0  | Account teardown safety net (demo accounts only) |
 
