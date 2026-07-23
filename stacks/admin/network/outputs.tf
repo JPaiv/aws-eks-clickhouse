@@ -16,3 +16,8 @@ output "public_subnet_ids" {
   description = "Public subnet IDs for internet-facing load balancers"
   value       = module.vpc.public_subnet_ids
 }
+
+output "spoke_api_security_group_id" {
+  description = "SG every spoke attaches so the hub can reach its API endpoint"
+  value       = aws_security_group.spoke_api.id
+}
