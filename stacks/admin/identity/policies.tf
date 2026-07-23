@@ -173,20 +173,33 @@ data "aws_iam_policy_document" "ack_eks_controller" {
     }
   }
 
-  # Spoke creation passes the per-spoke fleet roles (stacks/admin/fleet) to
-  # the EKS service.
+  # Spoke creation passes the per-spoke fleet roles (stacks/admin/fleet).
+  # The cluster role is consumed by the EKS control plane.
   statement {
-    sid     = "PassFleetRolesToEks"
-    actions = ["iam:PassRole"]
-    resources = concat(
-      values(data.terraform_remote_state.fleet.outputs.spoke_cluster_role_arns),
-      values(data.terraform_remote_state.fleet.outputs.spoke_node_role_arns),
-    )
+    sid       = "PassFleetClusterRolesToEks"
+    actions   = ["iam:PassRole"]
+    resources = values(data.terraform_remote_state.fleet.outputs.spoke_cluster_role_arns)
 
     condition {
       test     = "StringEquals"
       variable = "iam:PassedToService"
       values   = ["eks.amazonaws.com"]
+    }
+  }
+
+  # The node role's ultimate consumer under Auto Mode is EC2 — EKS evaluates
+  # the pass as PassedToService=ec2.amazonaws.com, so eks.amazonaws.com alone
+  # gets AccessDenied on CreateCluster. Both services stay listed to cover
+  # every point EKS re-evaluates the pass.
+  statement {
+    sid       = "PassFleetNodeRoles"
+    actions   = ["iam:PassRole"]
+    resources = values(data.terraform_remote_state.fleet.outputs.spoke_node_role_arns)
+
+    condition {
+      test     = "StringEquals"
+      variable = "iam:PassedToService"
+      values   = ["eks.amazonaws.com", "ec2.amazonaws.com"]
     }
   }
 

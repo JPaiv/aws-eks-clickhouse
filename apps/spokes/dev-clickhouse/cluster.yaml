@@ -15,7 +15,7 @@ metadata:
   name: per-en1-dev-clickhouse
 spec:
   name: per-en1-dev-clickhouse
-  version: "1.34"
+  version: "1.36"
   # Per-spoke fleet role: per-en1-dev-clickhouse-cluster (stacks/admin/fleet)
   roleARN: arn:aws:iam::128990654954:role/per-en1-dev-clickhouse-cluster
   resourcesVPCConfig:
