@@ -24,6 +24,11 @@ spec:
       - subnet-030a2c6102fb8973d
       - subnet-0ff046a7654e7bb1a
       - subnet-06168d25566488e50
+    # Hub-to-spoke API access: the EKS-managed cluster SG only admits the
+    # spoke's own nodes; this SG (stacks/admin/network) admits the shared
+    # VPC, so the hub's Argo CD can reach the private endpoint.
+    securityGroupIDs:
+      - sg-0bd9cadc1d4eb9a6f
     endpointPrivateAccess: true
     endpointPublicAccess: true
   accessConfig:
