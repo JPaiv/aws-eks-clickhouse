@@ -33,7 +33,11 @@ spec:
           releaseName: chop
       destination:
         name: "{{.name}}"
-        namespace: clickhouse-operator
+        # The operator lives WITH its workload: the 0.27 CHK controller only
+        # watches the operator's own namespace (verified empirically — a CHK
+        # beside the operator reconciles in seconds, one in another namespace
+        # is ignored indefinitely).
+        namespace: clickhouse
       syncPolicy:
         automated:
           prune: true
