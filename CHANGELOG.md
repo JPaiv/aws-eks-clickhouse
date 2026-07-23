@@ -1,5 +1,21 @@
 # Changelog
 
+## [1.3.0](https://github.com/JPaiv/aws-eks-clickhouse/compare/v1.2.4...v1.3.0) (2026-07-23)
+
+
+### Features
+
+* clickhouse operator on every spoke, keeper quorum in the baseline ([f669e2e](https://github.com/JPaiv/aws-eks-clickhouse/commit/f669e2e103f97c046d97a28b85e0b2e88f6c0bd7))
+* clickhouse operator on every spoke, keeper quorum in the baseline ([cf59466](https://github.com/JPaiv/aws-eks-clickhouse/commit/cf594666865e6032d77ad4430aea9856f8ba4c0b))
+
+
+### Bug Fixes
+
+* pin the spoke registration to its real ca ([0d19ce1](https://github.com/JPaiv/aws-eks-clickhouse/commit/0d19ce1192c11fa767db8336b27093a8664db010))
+* pin the spoke registration to its real ca ([aed2235](https://github.com/JPaiv/aws-eks-clickhouse/commit/aed2235180894dc20982c0833901dfe508172254))
+* server-side apply for the operator chart ([df8de17](https://github.com/JPaiv/aws-eks-clickhouse/commit/df8de1733c5956c5821ac62cf55c98af7fe8e8d3))
+* server-side apply for the operator chart ([a98089c](https://github.com/JPaiv/aws-eks-clickhouse/commit/a98089c266fafe71464c6a05e21e41ee4143ffe9))
+
 ## [1.2.4](https://github.com/JPaiv/aws-eks-clickhouse/compare/v1.2.3...v1.2.4) (2026-07-23)
 
 
