@@ -1,5 +1,15 @@
 # Changelog
 
+## [1.3.1](https://github.com/JPaiv/aws-eks-clickhouse/compare/v1.3.0...v1.3.1) (2026-07-23)
+
+
+### Bug Fixes
+
+* operator installs into the clickhouse namespace ([ee387ea](https://github.com/JPaiv/aws-eks-clickhouse/commit/ee387eaf2bb743d9f9a6048688e70b12d275bc01))
+* operator installs into the clickhouse namespace ([e09b0d6](https://github.com/JPaiv/aws-eks-clickhouse/commit/e09b0d645a68d7cede3dbe0c9e95cec6839316f1))
+* short helm release name for the operator chart ([5cbce20](https://github.com/JPaiv/aws-eks-clickhouse/commit/5cbce202e2b8739cc34f93d33b3969def1481d69))
+* short helm release name for the operator chart ([a872094](https://github.com/JPaiv/aws-eks-clickhouse/commit/a8720949b727351b4a5b1134f8550d5f3a92c31d))
+
 ## [1.3.0](https://github.com/JPaiv/aws-eks-clickhouse/compare/v1.2.4...v1.3.0) (2026-07-23)
 
 
