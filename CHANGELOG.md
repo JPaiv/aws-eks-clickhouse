@@ -1,5 +1,13 @@
 # Changelog
 
+## [1.2.0](https://github.com/JPaiv/aws-eks-clickhouse/compare/v1.1.0...v1.2.0) (2026-07-23)
+
+
+### Features
+
+* fill dev-clickhouse spoke placeholders from bootstrap outputs ([273cbe6](https://github.com/JPaiv/aws-eks-clickhouse/commit/273cbe6f627d8fba131df39e8f840c2cae8f56fc))
+* fill dev-clickhouse spoke placeholders from bootstrap outputs ([98dd10d](https://github.com/JPaiv/aws-eks-clickhouse/commit/98dd10dee13d154141fed0604f5c25689fa25b09))
+
 ## [1.1.0](https://github.com/JPaiv/aws-eks-clickhouse/compare/v1.0.0...v1.1.0) (2026-07-22)
 
 
