@@ -95,9 +95,6 @@ data "aws_iam_policy_document" "ack_eks_controller" {
       "eks:UpdateClusterVersion",
       "eks:DescribeUpdate",
       "eks:ListUpdates",
-      "eks:TagResource",
-      "eks:UntagResource",
-      "eks:ListTagsForResource",
       "eks:CreateAccessEntry",
       "eks:ListAccessEntries",
       "eks:CreatePodIdentityAssociation",
@@ -119,6 +116,23 @@ data "aws_iam_policy_document" "ack_eks_controller" {
       variable = "aws:RequestTag/Cluster"
       values   = ["${local.namespace}-${local.environment}-*"]
     }
+  }
+
+  # Tagging authorizes against the ARN of the resource being tagged, so the
+  # cluster/* pin alone denies tagging access entries and Pod Identity
+  # associations — each resource type needs its own ARN form here.
+  statement {
+    sid = "FleetTagging"
+    actions = [
+      "eks:TagResource",
+      "eks:UntagResource",
+      "eks:ListTagsForResource",
+    ]
+    resources = [
+      "arn:aws:eks:${local.region}:${local.account_id}:cluster/${local.namespace}-${local.environment}-*",
+      "arn:aws:eks:${local.region}:${local.account_id}:access-entry/${local.namespace}-${local.environment}-*/*",
+      "arn:aws:eks:${local.region}:${local.account_id}:podidentityassociation/${local.namespace}-${local.environment}-*/*",
+    ]
   }
 
   statement {
