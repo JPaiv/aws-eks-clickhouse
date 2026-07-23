@@ -1,0 +1,53 @@
+# The coordination quorum (ADR roadmap: Keeper before ClickHouse). Three
+# replicas, one per AZ: Raft holds quorum through the loss of any single
+# node or zone, and Keeper's availability is the fleet's write availability —
+# replicated tables go read-only without it.
+#
+# The operator (spoke-clickhouse-operator ApplicationSet) owns the CRD and
+# reconciles this into a StatefulSet, services and a PDB.
+apiVersion: clickhouse-keeper.altinity.com/v1
+kind: ClickHouseKeeperInstallation
+metadata:
+  name: keeper
+  namespace: clickhouse
+spec:
+  configuration:
+    clusters:
+      - name: default
+        layout:
+          replicasCount: 3
+  defaults:
+    templates:
+      podTemplate: keeper
+      dataVolumeClaimTemplate: data
+  templates:
+    podTemplates:
+      - name: keeper
+        spec:
+          topologySpreadConstraints:
+            # One Keeper per AZ. The label is operator-applied to every pod
+            # of this installation.
+            - maxSkew: 1
+              topologyKey: topology.kubernetes.io/zone
+              whenUnsatisfiable: DoNotSchedule
+              labelSelector:
+                matchLabels:
+                  clickhouse-keeper.altinity.com/chk: keeper
+          containers:
+            - name: clickhouse-keeper
+              image: clickhouse/clickhouse-keeper:26.3.17-alpine
+              resources:
+                requests:
+                  cpu: 250m
+                  memory: 512Mi
+                limits:
+                  memory: 1Gi
+    volumeClaimTemplates:
+      - name: data
+        spec:
+          storageClassName: gp3
+          accessModes:
+            - ReadWriteOnce
+          resources:
+            requests:
+              storage: 10Gi
