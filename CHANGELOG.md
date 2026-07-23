@@ -1,5 +1,14 @@
 # Changelog
 
+## [1.2.2](https://github.com/JPaiv/aws-eks-clickhouse/compare/v1.2.1...v1.2.2) (2026-07-23)
+
+
+### Bug Fixes
+
+* pass Auto Mode node role to ec2.amazonaws.com, spoke on 1.36 ([4594e7c](https://github.com/JPaiv/aws-eks-clickhouse/commit/4594e7ca668c0060fe8b02a595779be8a8dbe414))
+* tag actions authorize on the tagged resource's own ARN ([c63a6a3](https://github.com/JPaiv/aws-eks-clickhouse/commit/c63a6a3ed4a6370fb4b6f3a8e5a14e0e706d9ea4))
+* tag actions authorize on the tagged resource's own ARN ([a46a860](https://github.com/JPaiv/aws-eks-clickhouse/commit/a46a860724eee5b0b0188bbc229c5946d88f2309))
+
 ## [1.2.1](https://github.com/JPaiv/aws-eks-clickhouse/compare/v1.2.0...v1.2.1) (2026-07-23)
 
 
