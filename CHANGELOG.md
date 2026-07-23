@@ -1,5 +1,13 @@
 # Changelog
 
+## [1.2.4](https://github.com/JPaiv/aws-eks-clickhouse/compare/v1.2.3...v1.2.4) (2026-07-23)
+
+
+### Bug Fixes
+
+* stop committing the cluster secret's server key ([178daa9](https://github.com/JPaiv/aws-eks-clickhouse/commit/178daa9a881c7cfa5918e9660d29e01dec28446d))
+* stop committing the cluster secret's server key ([e139652](https://github.com/JPaiv/aws-eks-clickhouse/commit/e139652d78b8d2847e7f451b3c0e9025ad8c5dee))
+
 ## [1.2.3](https://github.com/JPaiv/aws-eks-clickhouse/compare/v1.2.2...v1.2.3) (2026-07-23)
 
 
