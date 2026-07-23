@@ -1,5 +1,13 @@
 # Changelog
 
+## [1.2.3](https://github.com/JPaiv/aws-eks-clickhouse/compare/v1.2.2...v1.2.3) (2026-07-23)
+
+
+### Bug Fixes
+
+* admit the hub to spoke API endpoints via a shared SG ([1996241](https://github.com/JPaiv/aws-eks-clickhouse/commit/19962417be84d8bd6cd1fe9dd2838b007fbd5e94))
+* admit the hub to spoke API endpoints via a shared SG ([042f173](https://github.com/JPaiv/aws-eks-clickhouse/commit/042f173bdc9de26dec39839c501c0d72930b6f66))
+
 ## [1.2.2](https://github.com/JPaiv/aws-eks-clickhouse/compare/v1.2.1...v1.2.2) (2026-07-23)
 
 
