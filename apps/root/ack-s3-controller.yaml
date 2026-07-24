@@ -1,0 +1,39 @@
+# ACK S3 controller — the first controller onboarded purely as Git manifests
+# (ADR-0012's fixed point in action). It creates the S3 buckets ClickHouse
+# uses for storage; its identity comes from apps/hub/ack-identity (a Role the
+# IAM controller mints and a PodIdentityAssociation the EKS controller binds),
+# so no OpenTofu change is needed to add it.
+#
+# aws.region is hardcoded: Terramate globals do not reach Git-land, and this
+# file is reconciled by Argo CD, not OpenTofu.
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: ack-s3-controller
+  namespace: argocd
+  finalizers:
+    - resources-finalizer.argocd.argoproj.io
+spec:
+  project: default
+  source:
+    # OCI Helm registry: no scheme in repoURL, chart named separately.
+    repoURL: public.ecr.aws/aws-controllers-k8s
+    chart: s3-chart
+    targetRevision: 1.8.1
+    helm:
+      valuesObject:
+        aws:
+          region: eu-north-1
+        # Must match the PodIdentityAssociation in apps/hub/ack-identity — the
+        # contract that gives this pod its /ack/ role.
+        serviceAccount:
+          name: ack-s3-controller
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: ack-system
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+    syncOptions:
+      - CreateNamespace=true

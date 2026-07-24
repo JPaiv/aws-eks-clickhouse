@@ -1,0 +1,62 @@
+# The IAM role the ACK S3 controller assumes via Pod Identity — created BY the
+# ACK IAM controller, from Git (ADR-0012). Two hard requirements enforced by
+# the controller's own policy (stacks/admin/identity/policies.tf), or CreateRole
+# is denied:
+#   * path MUST be /ack/  — scoping is by ARN (role/ack/*)
+#   * permissionsBoundary MUST be the OpenTofu-owned boundary below
+#
+# Literal account id (128990654954): Terramate globals do not reach Git-land,
+# and the boundary ARN embeds the account — the tension ADR-0012 deferred,
+# resolved the way the spoke manifests already do it (committed literal).
+apiVersion: iam.services.k8s.aws/v1alpha1
+kind: Role
+metadata:
+  name: per-en1-admin-ack-s3-controller
+  namespace: ack-system
+spec:
+  name: per-en1-admin-ack-s3-controller
+  path: /ack/
+  description: ACK S3 controller — reconciles S3 buckets for the fleet (ADR-0012)
+  permissionsBoundary: arn:aws:iam::128990654954:policy/per-en1-admin-ack-boundary
+  # Pod Identity trust, mirroring the bootstrapped controllers: the agent on
+  # the node exchanges the pod's SA token for these credentials. The
+  # aws:SourceAccount condition is the confused-deputy guard.
+  assumeRolePolicyDocument: |
+    {
+      "Version": "2012-10-17",
+      "Statement": [
+        {
+          "Effect": "Allow",
+          "Principal": { "Service": "pods.eks.amazonaws.com" },
+          "Action": ["sts:AssumeRole", "sts:TagSession"],
+          "Condition": { "StringEquals": { "aws:SourceAccount": "128990654954" } }
+        }
+      ]
+    }
+  # s3:* is fine here: the permissions boundary caps the EFFECTIVE grant to
+  # label-prefixed buckets already, and pinning the role to the same prefix
+  # keeps the two in lockstep. This is the fine-grained grant the boundary's
+  # "S3WithinNamePrefix" comment defers to.
+  inlinePolicies:
+    s3-buckets: |
+      {
+        "Version": "2012-10-17",
+        "Statement": [
+          {
+            "Sid": "S3WithinNamePrefix",
+            "Effect": "Allow",
+            "Action": "s3:*",
+            "Resource": [
+              "arn:aws:s3:::per-en1-*",
+              "arn:aws:s3:::per-en1-*/*"
+            ]
+          }
+        ]
+      }
+  tags:
+    - key: Cluster
+      value: per-en1-admin-ack
+    - key: Project
+      value: aws-eks-clickhouse
+    - key: ManagedBy
+      value: ack

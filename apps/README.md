@@ -17,6 +17,13 @@ under `spokes/` to add a spoke; delete it to retire one.
 
 ```
 root/     Child Applications the root app-of-apps deploys (controllers, spokes, ApplicationSets)
+hub/      ACK resources reconciled on the hub itself — e.g. identity for Git-onboarded controllers
 spokes/   One directory per spoke cluster — cluster, access entries, Argo registration
 fleet/    Workloads the spoke-baseline ApplicationSet lands on every fleet=spoke cluster
 ```
+
+Onboarding a new ACK controller (s3, kms, …) is three manifests, no OpenTofu:
+its Application under `root/`, and a `Role` + `PodIdentityAssociation` under
+`hub/ack-identity/` — the IAM and EKS controllers reconcile the latter two into
+the AWS role and Pod Identity binding the new controller needs
+([ADR-0012](../docs/adr/0012-ack-identity-fixed-point.md)).
