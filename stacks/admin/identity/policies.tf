@@ -99,6 +99,11 @@ data "aws_iam_policy_document" "ack_eks_controller" {
       "eks:ListAccessEntries",
       "eks:CreatePodIdentityAssociation",
       "eks:ListPodIdentityAssociations",
+      # The controller lists node groups on its reconcile/delete path; without
+      # this the delete finalizer 403-loops and the cluster never tears down
+      # from Git (the scoped-policy-lags-the-controller risk in ADR-0012).
+      # Auto Mode spokes have none, but the call is made regardless.
+      "eks:ListNodegroups",
     ]
     resources = ["arn:aws:eks:${local.region}:${local.account_id}:cluster/${local.namespace}-${local.environment}-*"]
   }
