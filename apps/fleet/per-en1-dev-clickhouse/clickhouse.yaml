@@ -49,6 +49,13 @@ spec:
       storage_configuration/policies/s3_main/volumes/main/disk: s3_cache
       # Make S3 the default for every MergeTree table on this cluster.
       merge_tree/storage_policy: s3_main
+      # Native Prometheus endpoint on :9363/metrics — the spoke's Alloy scrapes
+      # it via the pod annotations below and ships to the hub (ADR-0014).
+      prometheus/port: "9363"
+      prometheus/endpoint: /metrics
+      prometheus/metrics: "true"
+      prometheus/events: "true"
+      prometheus/asynchronous_metrics: "true"
   defaults:
     templates:
       podTemplate: clickhouse
@@ -56,6 +63,13 @@ spec:
   templates:
     podTemplates:
       - name: clickhouse
+        # Annotations the spoke's Alloy keys on to scrape ClickHouse's
+        # Prometheus endpoint (enabled in settings above).
+        metadata:
+          annotations:
+            prometheus.io/scrape: "true"
+            prometheus.io/port: "9363"
+            prometheus.io/path: "/metrics"
         spec:
           # The SA the PodIdentityAssociation binds to the S3 role.
           serviceAccountName: clickhouse

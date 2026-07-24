@@ -1,0 +1,54 @@
+# VictoriaMetrics (single-node) on the hub — the fleet's one metrics store
+# (ADR-0014). Every spoke's Alloy remote_writes here over the shared VPC; the
+# UI (vmui) is reached by port-forward like Argo CD, never exposed.
+#
+# Ingest is fronted by an INTERNAL NLB so spoke pods can reach :8428 privately
+# (ADR-0016). The hub is standard EKS with the in-tree cloud provider, so the
+# legacy annotations below are what provision it — no AWS LB Controller. The
+# source range pins it to the shared VPC.
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: victoria-metrics
+  namespace: argocd
+  finalizers:
+    - resources-finalizer.argocd.argoproj.io
+spec:
+  project: default
+  source:
+    repoURL: https://victoriametrics.github.io/helm-charts/
+    chart: victoria-metrics-single
+    targetRevision: 0.43.0
+    helm:
+      valuesObject:
+        server:
+          # 1 month of metrics is plenty for a dev fleet; grows on the hub's
+          # own EBS (its first stateful workload — ADR-0014).
+          retentionPeriod: "1"
+          persistentVolume:
+            enabled: true
+            storageClassName: gp3
+            size: 10Gi
+          # Internal NLB on :8428 — remote_write at /api/v1/write, vmui at /vmui.
+          service:
+            type: LoadBalancer
+            loadBalancerSourceRanges:
+              - 10.0.0.0/16
+            annotations:
+              service.beta.kubernetes.io/aws-load-balancer-type: nlb
+              service.beta.kubernetes.io/aws-load-balancer-internal: "true"
+          resources:
+            requests:
+              cpu: 250m
+              memory: 512Mi
+            limits:
+              memory: 1Gi
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: observability
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+    syncOptions:
+      - CreateNamespace=true

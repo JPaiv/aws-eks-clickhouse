@@ -131,6 +131,7 @@ Each of these is an ADR with the context, the trade-off and what it costs:
 - [ADR-0013](docs/adr/0013-hub-and-spoke-fleet.md) — Hub-and-spoke fleet: spoke clusters are Git manifests
 - [ADR-0014](docs/adr/0014-centralized-observability-on-the-hub.md) — Centralized observability: the hub watches, the spokes ship
 - [ADR-0015](docs/adr/0015-clickhouse-data-plane.md) — ClickHouse data plane: S3-backed storage, Pod Identity, per-spoke workloads
+- [ADR-0016](docs/adr/0016-observability-transport.md) — Observability transport: spokes reach the hub over an internal NLB
 
 ## Roadmap
 
@@ -158,7 +159,7 @@ Each of these is an ADR with the context, the trade-off and what it costs:
 - [ ] ACK controllers — whatever else ClickHouse turns out to need (via Git)
 - [x] ClickHouse Keeper ensemble — 3-replica quorum, one per AZ, on every spoke
 - [x] ClickHouse cluster — replicated (1×2), S3-backed storage via Pod Identity ([ADR-0015](docs/adr/0015-clickhouse-data-plane.md))
-- [ ] Observability — Alloy on every spoke shipping to VictoriaMetrics + VictoriaLogs on the hub ([ADR-0014](docs/adr/0014-centralized-observability-on-the-hub.md))
+- [x] Observability — Alloy on every spoke shipping to VictoriaMetrics + VictoriaLogs on the hub ([ADR-0014](docs/adr/0014-centralized-observability-on-the-hub.md), [ADR-0016](docs/adr/0016-observability-transport.md))
 - [ ] Teardown ordering — drain Applications before `task destroy`
 
 ## License
