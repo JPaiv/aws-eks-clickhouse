@@ -130,6 +130,7 @@ Each of these is an ADR with the context, the trade-off and what it costs:
 - [ADR-0012](docs/adr/0012-ack-identity-fixed-point.md) — OpenTofu's identity fixed point: ACK iam + eks controllers
 - [ADR-0013](docs/adr/0013-hub-and-spoke-fleet.md) — Hub-and-spoke fleet: spoke clusters are Git manifests
 - [ADR-0014](docs/adr/0014-centralized-observability-on-the-hub.md) — Centralized observability: the hub watches, the spokes ship
+- [ADR-0015](docs/adr/0015-clickhouse-data-plane.md) — ClickHouse data plane: S3-backed storage, Pod Identity, per-spoke workloads
 
 ## Roadmap
 
@@ -155,8 +156,8 @@ Each of these is an ADR with the context, the trade-off and what it costs:
 - [x] Hub-and-spoke fleet — spoke clusters (EKS Auto Mode) as Git manifests, first spoke `per-en1-dev-clickhouse`
 - [x] ACK S3 controller — onboarded as pure Git manifests (`apps/root` + `apps/hub/ack-identity`), no OpenTofu change ([ADR-0012](docs/adr/0012-ack-identity-fixed-point.md))
 - [ ] ACK controllers — whatever else ClickHouse turns out to need (via Git)
-- [ ] ClickHouse Keeper ensemble
-- [ ] ClickHouse cluster — sharding, replication, S3-backed storage
+- [x] ClickHouse Keeper ensemble — 3-replica quorum, one per AZ, on every spoke
+- [x] ClickHouse cluster — replicated (1×2), S3-backed storage via Pod Identity ([ADR-0015](docs/adr/0015-clickhouse-data-plane.md))
 - [ ] Observability — Alloy on every spoke shipping to VictoriaMetrics + VictoriaLogs on the hub ([ADR-0014](docs/adr/0014-centralized-observability-on-the-hub.md))
 - [ ] Teardown ordering — drain Applications before `task destroy`
 

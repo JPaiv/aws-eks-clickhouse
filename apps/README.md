@@ -19,8 +19,15 @@ under `spokes/` to add a spoke; delete it to retire one.
 root/     Child Applications the root app-of-apps deploys (controllers, spokes, ApplicationSets)
 hub/      ACK resources reconciled on the hub itself — e.g. identity for Git-onboarded controllers
 spokes/   One directory per spoke cluster — cluster, access entries, Argo registration
-fleet/    Workloads the spoke-baseline ApplicationSet lands on every fleet=spoke cluster
+fleet/    Spoke workloads: baseline/ (every fleet=spoke cluster) + <cluster-name>/ (one spoke)
 ```
+
+Two kinds of workload land on spokes ([ADR-0015](../docs/adr/0015-clickhouse-data-plane.md)):
+`fleet/baseline/` goes to **every** `fleet=spoke` cluster via the `spoke-baseline`
+ApplicationSet, while `fleet/<cluster-name>/` goes to **that one** spoke via the
+`spoke-clickhouse` ApplicationSet (its `source.path` is templated `apps/fleet/{{.name}}`).
+Per-spoke workloads — like a ClickHouse cluster naming its own S3 bucket — live in the
+latter. Note this is the inverse of `spokes/`, whose ACK CRs are applied to the **hub**.
 
 Onboarding a new ACK controller (s3, kms, …) is three manifests, no OpenTofu:
 its Application under `root/`, and a `Role` + `PodIdentityAssociation` under
