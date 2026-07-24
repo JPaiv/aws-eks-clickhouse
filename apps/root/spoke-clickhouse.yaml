@@ -1,0 +1,46 @@
+# Per-spoke workloads (ADR-0015). Same cattle targeting as spoke-baseline and
+# spoke-clickhouse-operator — every fleet=spoke cluster — but the source path
+# is templated from the cluster name, so each spoke gets its OWN directory of
+# workloads instead of the shared baseline. per-en1-dev-clickhouse pulls
+# apps/fleet/per-en1-dev-clickhouse (its ServiceAccount + ClickHouseInstallation).
+#
+# Unlike manifests inside a plain directory source, the ApplicationSet
+# template's own fields ARE rendered, so {{.name}} in source.path works. This
+# is what lets a spoke's ClickHouse reference that spoke's own S3 bucket.
+#
+# Convention: apps/fleet/baseline = every spoke; apps/fleet/<cluster-name> =
+# that one spoke. A spoke without a matching directory produces an Application
+# that errors until the directory lands — add both together.
+apiVersion: argoproj.io/v1alpha1
+kind: ApplicationSet
+metadata:
+  name: spoke-clickhouse
+  namespace: argocd
+spec:
+  goTemplate: true
+  generators:
+    - clusters:
+        selector:
+          matchLabels:
+            fleet: spoke
+  template:
+    metadata:
+      name: "clickhouse-{{.name}}"
+    spec:
+      project: default
+      source:
+        repoURL: https://github.com/JPaiv/aws-eks-clickhouse.git
+        targetRevision: HEAD
+        path: "apps/fleet/{{.name}}"
+      destination:
+        name: "{{.name}}"
+        namespace: clickhouse
+      syncPolicy:
+        automated:
+          prune: true
+          selfHeal: true
+        syncOptions:
+          - CreateNamespace=true
+          # The CHI carries a large config; SSA avoids the client-side
+          # last-applied annotation limit (same reason as the operator chart).
+          - ServerSideApply=true

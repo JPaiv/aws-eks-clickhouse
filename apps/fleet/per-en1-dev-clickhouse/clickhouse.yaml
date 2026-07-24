@@ -1,0 +1,94 @@
+# The dev spoke's ClickHouse cluster (ADR-0015). Lives here, not in
+# apps/fleet/baseline, because it is per-spoke: it names this spoke's own S3
+# bucket. The spoke-clickhouse ApplicationSet (apps/root/spoke-clickhouse.yaml)
+# renders apps/fleet/{{.name}} onto each spoke, so this directory —
+# per-en1-dev-clickhouse — lands only on its namesake.
+#
+# Topology: 1 shard x 2 replicas — replicated and HA across two AZs, the
+# cheapest layout that still exercises replication (sharding is a one-line
+# layout change later). The operator (spoke-clickhouse-operator) reconciles
+# this into StatefulSets, services and a PDB.
+apiVersion: clickhouse.altinity.com/v1
+kind: ClickHouseInstallation
+metadata:
+  name: dev
+  namespace: clickhouse
+spec:
+  configuration:
+    # Coordination via the baseline Keeper quorum, referenced by name — the
+    # operator (>= 0.27.0) resolves the CHK's per-replica services and keeps
+    # the node list in sync. Replicated tables go read-only without it.
+    zookeeper:
+      keeper:
+        name: keeper
+        namespace: clickhouse
+    clusters:
+      - name: default
+        layout:
+          shardsCount: 1
+          replicasCount: 2
+    # Storage as structured settings, not an XML blob: the operator renders
+    # each slash-path key into nested config.d XML. S3 is the primary store;
+    # a `cache` disk in front keeps metadata-heavy operations fast, and a
+    # small local gp3 PVC (below) holds that cache plus the S3 metadata.
+    #
+    # Credentials come from EKS Pod Identity — use_environment_credentials
+    # makes ClickHouse read the injected AWS_CONTAINER_* env, so no keys live
+    # in config. This needs ClickHouse >= 24.11 (token-file support); the
+    # 26.3.x pin below clears that comfortably and matches the Keeper image.
+    settings:
+      storage_configuration/disks/s3_disk/type: s3
+      storage_configuration/disks/s3_disk/endpoint: "https://per-en1-dev-clickhouse-data.s3.eu-north-1.amazonaws.com/clickhouse/"
+      storage_configuration/disks/s3_disk/use_environment_credentials: "true"
+      storage_configuration/disks/s3_disk/region: eu-north-1
+      storage_configuration/disks/s3_disk/metadata_path: /var/lib/clickhouse/disks/s3_disk/
+      storage_configuration/disks/s3_cache/type: cache
+      storage_configuration/disks/s3_cache/disk: s3_disk
+      storage_configuration/disks/s3_cache/path: /var/lib/clickhouse/disks/s3_cache/
+      storage_configuration/disks/s3_cache/max_size: "10Gi"
+      storage_configuration/policies/s3_main/volumes/main/disk: s3_cache
+      # Make S3 the default for every MergeTree table on this cluster.
+      merge_tree/storage_policy: s3_main
+  defaults:
+    templates:
+      podTemplate: clickhouse
+      dataVolumeClaimTemplate: data
+  templates:
+    podTemplates:
+      - name: clickhouse
+        spec:
+          # The SA the PodIdentityAssociation binds to the S3 role.
+          serviceAccountName: clickhouse
+          topologySpreadConstraints:
+            # One replica per AZ. minDomains 2 is load-bearing for the same
+            # reason as the Keeper's (see keeper.yaml): without it the two
+            # replicas can co-locate in one zone; with it, fewer than two
+            # zones is unschedulable and Karpenter must spread them.
+            - maxSkew: 1
+              minDomains: 2
+              topologyKey: topology.kubernetes.io/zone
+              whenUnsatisfiable: DoNotSchedule
+              labelSelector:
+                matchLabels:
+                  clickhouse.altinity.com/chi: dev
+          containers:
+            - name: clickhouse
+              # -alpine and version matched to the Keeper (keeper.yaml).
+              image: clickhouse/clickhouse-server:26.3.17-alpine
+              resources:
+                requests:
+                  cpu: 500m
+                  memory: 1Gi
+                limits:
+                  memory: 2Gi
+    volumeClaimTemplates:
+      # Local disk for system tables, S3 disk metadata, the S3 cache and logs
+      # — NOT table data, which lives in S3. Hence modest and gp3.
+      - name: data
+        spec:
+          storageClassName: gp3
+          accessModes:
+            - ReadWriteOnce
+          resources:
+            requests:
+              storage: 20Gi

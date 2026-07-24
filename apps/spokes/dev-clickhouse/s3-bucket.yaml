@@ -1,0 +1,32 @@
+# The S3 bucket backing ClickHouse storage on this spoke — created BY the ACK
+# S3 controller (apps/root/ack-s3-controller.yaml), from Git. Reconciled on the
+# hub like every other CR in this directory; the bucket is a global AWS
+# resource, so which cluster's controller makes it does not matter.
+#
+# Name carries the per-en1-* prefix the permissions boundary scopes S3 to
+# (ADR-0011/ADR-0012), so both the controller's and ClickHouse's roles can
+# reach it. S3 bucket names are globally unique — a collision fails
+# CreateBucket; append the account id if that happens.
+apiVersion: s3.services.k8s.aws/v1alpha1
+kind: Bucket
+metadata:
+  name: per-en1-dev-clickhouse-data
+spec:
+  name: per-en1-dev-clickhouse-data
+  # eu-north-1 is not us-east-1, so CreateBucket must carry a LocationConstraint.
+  createBucketConfiguration:
+    locationConstraint: eu-north-1
+  # ClickHouse data is private; lock the bucket down completely.
+  publicAccessBlock:
+    blockPublicACLs: true
+    blockPublicPolicy: true
+    ignorePublicACLs: true
+    restrictPublicBuckets: true
+  tagging:
+    tagSet:
+      - key: Cluster
+        value: per-en1-dev-clickhouse
+      - key: Project
+        value: aws-eks-clickhouse
+      - key: ManagedBy
+        value: ack

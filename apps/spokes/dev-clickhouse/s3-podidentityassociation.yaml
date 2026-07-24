@@ -1,0 +1,22 @@
+# Binds the ClickHouse S3 role to the `clickhouse` service account ON THE SPOKE
+# — created BY the ACK EKS controller, from Git (ADR-0012). Unlike the
+# controllers' associations (which target the hub), this one targets the spoke
+# cluster where the ClickHouse pods actually run.
+#
+# The EKS controller's policy allows CreatePodIdentityAssociation on
+# cluster/per-en1-* (the spoke matches) and PassRole on role/ack/* to
+# pods.eks.amazonaws.com, so this reconciles with no OpenTofu change. The SA it
+# names is created on the spoke by apps/fleet/per-en1-dev-clickhouse.
+apiVersion: eks.services.k8s.aws/v1alpha1
+kind: PodIdentityAssociation
+metadata:
+  name: per-en1-dev-clickhouse-s3
+spec:
+  clusterName: per-en1-dev-clickhouse
+  namespace: clickhouse
+  serviceAccount: clickhouse
+  roleARN: arn:aws:iam::128990654954:role/ack/per-en1-dev-clickhouse-s3
+  tags:
+    Cluster: per-en1-dev-clickhouse
+    Project: aws-eks-clickhouse
+    ManagedBy: ack

@@ -1,0 +1,65 @@
+# The IAM role ClickHouse's server pods assume via Pod Identity to reach their
+# S3 bucket — a workload role born in Git (ADR-0012), created BY the ACK IAM
+# controller. Distinct from the S3 *controller's* role
+# (apps/hub/ack-identity/s3-controller-role.yaml): that one manages buckets,
+# this one reads/writes objects in exactly one bucket.
+#
+# Same two hard requirements the controller policy enforces, or CreateRole is
+# denied: path MUST be /ack/, and the OpenTofu-owned boundary MUST be attached.
+# Literal account id (128990654954): committed like every other ARN under
+# apps/ (ADR-0013 — account ids are not secrets).
+apiVersion: iam.services.k8s.aws/v1alpha1
+kind: Role
+metadata:
+  name: per-en1-dev-clickhouse-s3
+spec:
+  name: per-en1-dev-clickhouse-s3
+  path: /ack/
+  description: ClickHouse data-plane S3 access on per-en1-dev-clickhouse (ADR-0015)
+  permissionsBoundary: arn:aws:iam::128990654954:policy/per-en1-admin-ack-boundary
+  # Pod Identity trust, with the confused-deputy guard, mirroring every other
+  # /ack/ role in this repo.
+  assumeRolePolicyDocument: |
+    {
+      "Version": "2012-10-17",
+      "Statement": [
+        {
+          "Effect": "Allow",
+          "Principal": { "Service": "pods.eks.amazonaws.com" },
+          "Action": ["sts:AssumeRole", "sts:TagSession"],
+          "Condition": { "StringEquals": { "aws:SourceAccount": "128990654954" } }
+        }
+      ]
+    }
+  # Scoped to the one bucket — narrower than the boundary's per-en1-* ceiling.
+  # ListBucket is on the bucket ARN; object verbs on the /* under it.
+  inlinePolicies:
+    s3-data: |
+      {
+        "Version": "2012-10-17",
+        "Statement": [
+          {
+            "Sid": "ListTheBucket",
+            "Effect": "Allow",
+            "Action": "s3:ListBucket",
+            "Resource": "arn:aws:s3:::per-en1-dev-clickhouse-data"
+          },
+          {
+            "Sid": "ReadWriteObjects",
+            "Effect": "Allow",
+            "Action": [
+              "s3:GetObject",
+              "s3:PutObject",
+              "s3:DeleteObject"
+            ],
+            "Resource": "arn:aws:s3:::per-en1-dev-clickhouse-data/*"
+          }
+        ]
+      }
+  tags:
+    - key: Cluster
+      value: per-en1-dev-clickhouse
+    - key: Project
+      value: aws-eks-clickhouse
+    - key: ManagedBy
+      value: ack
