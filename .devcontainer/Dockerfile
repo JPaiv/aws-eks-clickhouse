@@ -157,6 +157,9 @@ ENV TZ="Europe/Helsinki"
 # DEPENDENCIES
 # - jq: JSON wrangling for `aws ... --output json` in Taskfile targets
 # - python3 toolchain: ad-hoc scripting; the AWS CLI ships its own runtime
+# - python3-yaml: PyYAML for validating the Argo CD / ACK manifests under apps/.
+#   Installed from the distro, not pip: Ubuntu 24.04's system Python is
+#   PEP-668 externally-managed, so `pip install` would need --break-system-packages.
 # Post-copy fixup: drop the node image's yarn symlinks, whose /opt targets
 # weren't copied (dangling otherwise; pnpm is the package manager here)
 RUN apt-get update && apt-get install -y --no-install-recommends \
@@ -164,5 +167,6 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
         python3 \
         python3-pip \
         python3-venv \
+        python3-yaml \
     && rm -rf /var/lib/apt/lists/* \
     && rm -f /usr/local/bin/yarn /usr/local/bin/yarnpkg

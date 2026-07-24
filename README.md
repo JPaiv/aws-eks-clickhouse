@@ -153,7 +153,8 @@ Each of these is an ADR with the context, the trade-off and what it costs:
 
 - [x] ACK iam + eks controllers — the identity fixed point, reconciled from `apps/root`
 - [x] Hub-and-spoke fleet — spoke clusters (EKS Auto Mode) as Git manifests, first spoke `per-en1-dev-clickhouse`
-- [ ] ACK controllers — S3 and whatever else ClickHouse turns out to need (via Git)
+- [x] ACK S3 controller — onboarded as pure Git manifests (`apps/root` + `apps/hub/ack-identity`), no OpenTofu change ([ADR-0012](docs/adr/0012-ack-identity-fixed-point.md))
+- [ ] ACK controllers — whatever else ClickHouse turns out to need (via Git)
 - [ ] ClickHouse Keeper ensemble
 - [ ] ClickHouse cluster — sharding, replication, S3-backed storage
 - [ ] Observability — Alloy on every spoke shipping to VictoriaMetrics + VictoriaLogs on the hub ([ADR-0014](docs/adr/0014-centralized-observability-on-the-hub.md))

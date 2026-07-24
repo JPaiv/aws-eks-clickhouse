@@ -1,0 +1,22 @@
+# Binds the S3 controller's role to its service account on the hub — created
+# BY the ACK EKS controller, from Git (ADR-0012). This is the second half of
+# the fixed point: the association is an EKS API call only the EKS controller
+# can make, which is exactly why OpenTofu bootstrapped that controller.
+#
+# The EKS controller's policy allows CreatePodIdentityAssociation on the hub
+# (cluster/per-en1-*) and PassRole on role/ack/* to pods.eks.amazonaws.com, so
+# this reconciles with no OpenTofu change. roleARN carries the /ack/ path.
+apiVersion: eks.services.k8s.aws/v1alpha1
+kind: PodIdentityAssociation
+metadata:
+  name: per-en1-admin-ack-s3-controller
+  namespace: ack-system
+spec:
+  clusterName: per-en1-admin-ack
+  namespace: ack-system
+  serviceAccount: ack-s3-controller
+  roleARN: arn:aws:iam::128990654954:role/ack/per-en1-admin-ack-s3-controller
+  tags:
+    Cluster: per-en1-admin-ack
+    Project: aws-eks-clickhouse
+    ManagedBy: ack

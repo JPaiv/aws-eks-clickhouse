@@ -1,0 +1,29 @@
+# Hub-side ACK identity for the controllers onboarded from Git (ADR-0012).
+# The bootstrapped iam + eks controllers get their Pod Identity from OpenTofu;
+# every controller after them (s3 first, kms/… next) gets a Role manifest the
+# IAM controller reconciles and a PodIdentityAssociation the EKS controller
+# binds — all on the hub, in ack-system. This Application is what applies them.
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: ack-identity
+  namespace: argocd
+  finalizers:
+    - resources-finalizer.argocd.argoproj.io
+spec:
+  project: default
+  source:
+    repoURL: https://github.com/JPaiv/aws-eks-clickhouse.git
+    targetRevision: HEAD
+    path: apps/hub/ack-identity
+    directory:
+      recurse: true
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: ack-system
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+    syncOptions:
+      - CreateNamespace=true
