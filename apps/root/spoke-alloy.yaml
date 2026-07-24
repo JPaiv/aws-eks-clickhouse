@@ -1,0 +1,168 @@
+# Grafana Alloy on every spoke — the fleet's only shipper (ADR-0014). Same
+# cattle targeting as spoke-baseline / spoke-clickhouse-operator: a DaemonSet
+# lands on every fleet=spoke cluster and ships metrics and logs to the hub's
+# VictoriaMetrics / VictoriaLogs over the shared VPC (ADR-0016).
+#
+# Delivered as a Helm ApplicationSet, not a manifest in apps/fleet/baseline:
+# the baseline is a plain-directory source and cannot render a chart. The
+# config is generic — every spoke ships to the same hub — with the spoke's own
+# name templated in as the `cluster` label for attribution.
+#
+# No Pod Identity: Alloy makes no AWS API calls, only in-VPC HTTP to the hub.
+#
+# >>> BRING-UP: the two REPLACE_ME_*_NLB hosts below are late-bound. After the
+# >>> hub's victoria-metrics / victoria-logs Apps are healthy, run
+# >>> `task obs:endpoints`, paste the internal NLB hostnames here, and commit
+# >>> (the same late-binding as the spoke CA in `task fleet:harden`).
+apiVersion: argoproj.io/v1alpha1
+kind: ApplicationSet
+metadata:
+  name: spoke-alloy
+  namespace: argocd
+spec:
+  goTemplate: true
+  generators:
+    - clusters:
+        selector:
+          matchLabels:
+            fleet: spoke
+  template:
+    metadata:
+      name: "alloy-{{.name}}"
+    spec:
+      project: default
+      source:
+        repoURL: https://grafana.github.io/helm-charts
+        chart: alloy
+        targetRevision: 1.11.0
+        helm:
+          valuesObject:
+            controller:
+              type: daemonset
+            rbac:
+              create: true
+            serviceAccount:
+              create: true
+            alloy:
+              clustering:
+                enabled: false
+              # The node this pod runs on, so cAdvisor is scraped once per node
+              # instead of N times by the whole DaemonSet.
+              extraEnv:
+                - name: NODE_NAME
+                  valueFrom:
+                    fieldRef:
+                      fieldPath: spec.nodeName
+              configMap:
+                create: true
+                content: |
+                  logging {
+                    level  = "info"
+                    format = "logfmt"
+                  }
+
+                  // ---------------- METRICS ----------------
+
+                  prometheus.remote_write "hub" {
+                    endpoint {
+                      url = "http://REPLACE_ME_VM_NLB:8428/api/v1/write"
+                    }
+                    external_labels = { cluster = "{{.name}}" }
+                  }
+
+                  // kubelet/cAdvisor for THIS node only, via the apiserver proxy.
+                  discovery.kubernetes "nodes" {
+                    role = "node"
+                  }
+
+                  discovery.relabel "cadvisor" {
+                    targets = discovery.kubernetes.nodes.targets
+                    rule {
+                      source_labels = ["__meta_kubernetes_node_name"]
+                      regex         = sys.env("NODE_NAME")
+                      action        = "keep"
+                    }
+                    rule {
+                      replacement  = "kubernetes.default.svc.cluster.local:443"
+                      target_label = "__address__"
+                    }
+                    rule {
+                      source_labels = ["__meta_kubernetes_node_name"]
+                      regex         = "(.+)"
+                      replacement   = "/api/v1/nodes/${1}/proxy/metrics/cadvisor"
+                      target_label  = "__metrics_path__"
+                    }
+                  }
+
+                  prometheus.scrape "cadvisor" {
+                    targets           = discovery.relabel.cadvisor.output
+                    forward_to        = [prometheus.remote_write.hub.receiver]
+                    scheme            = "https"
+                    bearer_token_file = "/var/run/secrets/kubernetes.io/serviceaccount/token"
+                    tls_config {
+                      ca_file              = "/var/run/secrets/kubernetes.io/serviceaccount/ca.crt"
+                      insecure_skip_verify = false
+                    }
+                  }
+
+                  // Pods that ask to be scraped — this is how ClickHouse is picked up.
+                  discovery.kubernetes "pods" {
+                    role = "pod"
+                  }
+
+                  discovery.relabel "annotated_pods" {
+                    targets = discovery.kubernetes.pods.targets
+                    rule {
+                      source_labels = ["__meta_kubernetes_pod_annotation_prometheus_io_scrape"]
+                      regex         = "true"
+                      action        = "keep"
+                    }
+                    rule {
+                      source_labels = ["__meta_kubernetes_pod_annotation_prometheus_io_path"]
+                      regex         = "(.+)"
+                      target_label  = "__metrics_path__"
+                    }
+                    rule {
+                      source_labels = ["__address__", "__meta_kubernetes_pod_annotation_prometheus_io_port"]
+                      regex         = "([^:]+)(?::\\d+)?;(\\d+)"
+                      replacement   = "${1}:${2}"
+                      target_label  = "__address__"
+                    }
+                    rule {
+                      source_labels = ["__meta_kubernetes_namespace"]
+                      target_label  = "namespace"
+                    }
+                    rule {
+                      source_labels = ["__meta_kubernetes_pod_name"]
+                      target_label  = "pod"
+                    }
+                  }
+
+                  prometheus.scrape "annotated_pods" {
+                    targets    = discovery.relabel.annotated_pods.output
+                    forward_to = [prometheus.remote_write.hub.receiver]
+                  }
+
+                  // ---------------- LOGS ----------------
+
+                  loki.write "hub" {
+                    endpoint {
+                      url = "http://REPLACE_ME_VL_NLB:9428/insert/loki/api/v1/push"
+                    }
+                    external_labels = { cluster = "{{.name}}" }
+                  }
+
+                  // Tail pod logs via the Kubernetes API (no hostPath mount).
+                  loki.source.kubernetes "pods" {
+                    targets    = discovery.kubernetes.pods.targets
+                    forward_to = [loki.write.hub.receiver]
+                  }
+      destination:
+        name: "{{.name}}"
+        namespace: observability
+      syncPolicy:
+        automated:
+          prune: true
+          selfHeal: true
+        syncOptions:
+          - CreateNamespace=true

@@ -29,6 +29,11 @@ ApplicationSet, while `fleet/<cluster-name>/` goes to **that one** spoke via the
 Per-spoke workloads — like a ClickHouse cluster naming its own S3 bucket — live in the
 latter. Note this is the inverse of `spokes/`, whose ACK CRs are applied to the **hub**.
 
+Observability is split across both sides ([ADR-0014](../docs/adr/0014-centralized-observability-on-the-hub.md)):
+the stores (`victoria-metrics`, `victoria-logs`) are `root/` Applications on the **hub**,
+and the shipper is the `spoke-alloy` ApplicationSet landing a Grafana Alloy DaemonSet on
+**every** spoke — which reaches the hub over an internal NLB ([ADR-0016](../docs/adr/0016-observability-transport.md)).
+
 Onboarding a new ACK controller (s3, kms, …) is three manifests, no OpenTofu:
 its Application under `root/`, and a `Role` + `PodIdentityAssociation` under
 `hub/ack-identity/` — the IAM and EKS controllers reconcile the latter two into

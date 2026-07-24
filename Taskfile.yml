@@ -258,6 +258,25 @@ tasks:
       - aws eks describe-cluster --name "{{.CLUSTER}}" --query 'cluster.certificateAuthority.data' --output text
 
   # ---------------------------------------------------------------------------
+  # Observability (hub) — ADR-0014
+  # ---------------------------------------------------------------------------
+
+  obs:endpoints:
+    desc: Print the hub's internal NLB hostnames to paste into apps/root/spoke-alloy.yaml
+    cmds:
+      - kubectl -n observability get svc -o jsonpath='{range .items[?(@.spec.type=="LoadBalancer")]}{.metadata.name}{"\t"}{.status.loadBalancer.ingress[0].hostname}{"\n"}{end}'
+
+  obs:metrics:
+    desc: Port-forward the VictoriaMetrics UI (vmui) to http://localhost:8428/vmui
+    cmds:
+      - kubectl -n observability port-forward "svc/$(kubectl -n observability get svc -l app.kubernetes.io/name=victoria-metrics-single -o jsonpath='{.items[0].metadata.name}')" 8428:8428
+
+  obs:logs:
+    desc: Port-forward the VictoriaLogs UI to http://localhost:9428
+    cmds:
+      - kubectl -n observability port-forward "svc/$(kubectl -n observability get svc -l app.kubernetes.io/name=victoria-logs-single -o jsonpath='{.items[0].metadata.name}')" 9428:9428
+
+  # ---------------------------------------------------------------------------
   # Teardown safety net
   # ---------------------------------------------------------------------------
 

@@ -24,6 +24,7 @@ mark the old one **Superseded by ADR-NNNN**.
 | [0013](0013-hub-and-spoke-fleet.md)             | Hub-and-spoke fleet: spoke clusters are Git manifests | Accepted |
 | [0014](0014-centralized-observability-on-the-hub.md) | Centralized observability: the hub watches, the spokes ship | Accepted |
 | [0015](0015-clickhouse-data-plane.md)           | ClickHouse data plane: S3-backed storage, Pod Identity, per-spoke workloads | Accepted |
+| [0016](0016-observability-transport.md)         | Observability transport: spokes reach the hub over an internal NLB | Accepted |
 
 ## Format
 

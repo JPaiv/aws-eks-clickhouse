@@ -1,0 +1,52 @@
+# VictoriaLogs (single-node) on the hub — the fleet's one logs store
+# (ADR-0014). Every spoke's Alloy ships pod logs here via the Loki push API;
+# the VL UI is reached by port-forward, never exposed.
+#
+# Same internal-NLB transport as VictoriaMetrics (ADR-0016): spoke pods reach
+# ingest on :9428 privately over the shared VPC.
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: victoria-logs
+  namespace: argocd
+  finalizers:
+    - resources-finalizer.argocd.argoproj.io
+spec:
+  project: default
+  source:
+    repoURL: https://victoriametrics.github.io/helm-charts/
+    chart: victoria-logs-single
+    targetRevision: 0.13.9
+    helm:
+      valuesObject:
+        server:
+          # Logs are chattier and cheaper to age out than metrics; 30 days.
+          retentionPeriod: 30d
+          persistentVolume:
+            enabled: true
+            storageClassName: gp3
+            size: 10Gi
+          # Internal NLB on :9428 — Alloy posts to /insert/loki/api/v1/push,
+          # the VL UI is served on the same port.
+          service:
+            type: LoadBalancer
+            loadBalancerSourceRanges:
+              - 10.0.0.0/16
+            annotations:
+              service.beta.kubernetes.io/aws-load-balancer-type: nlb
+              service.beta.kubernetes.io/aws-load-balancer-internal: "true"
+          resources:
+            requests:
+              cpu: 250m
+              memory: 512Mi
+            limits:
+              memory: 1Gi
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: observability
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+    syncOptions:
+      - CreateNamespace=true
