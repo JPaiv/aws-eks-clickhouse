@@ -132,6 +132,7 @@ Each of these is an ADR with the context, the trade-off and what it costs:
 - [ADR-0014](docs/adr/0014-centralized-observability-on-the-hub.md) — Centralized observability: the hub watches, the spokes ship
 - [ADR-0015](docs/adr/0015-clickhouse-data-plane.md) — ClickHouse data plane: S3-backed storage, Pod Identity, per-spoke workloads
 - [ADR-0016](docs/adr/0016-observability-transport.md) — Observability transport: spokes reach the hub over an internal NLB
+- [ADR-0017](docs/adr/0017-git-provider-dependency.md) — Git source of truth: one provider now, multi-provider at prod scale
 
 ## Roadmap
 

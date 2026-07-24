@@ -25,6 +25,7 @@ mark the old one **Superseded by ADR-NNNN**.
 | [0014](0014-centralized-observability-on-the-hub.md) | Centralized observability: the hub watches, the spokes ship | Accepted |
 | [0015](0015-clickhouse-data-plane.md)           | ClickHouse data plane: S3-backed storage, Pod Identity, per-spoke workloads | Accepted |
 | [0016](0016-observability-transport.md)         | Observability transport: spokes reach the hub over an internal NLB | Accepted |
+| [0017](0017-git-provider-dependency.md)         | Git source of truth: one provider now, multi-provider at prod scale | Accepted |
 
 ## Format
 
