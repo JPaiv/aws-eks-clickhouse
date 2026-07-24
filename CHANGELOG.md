@@ -5,6 +5,8 @@
 
 ### Bug Fixes
 
+* minDomains forces the keeper quorum across three zones ([8f7918b](https://github.com/JPaiv/aws-eks-clickhouse/commit/8f7918baed1796357d41eabb926bd9ca6b4d4af4))
+* minDomains forces the keeper quorum across three zones ([125af4e](https://github.com/JPaiv/aws-eks-clickhouse/commit/125af4ef8c69edf08149f8349ae35793f1e3118d))
 * operator installs into the clickhouse namespace ([ee387ea](https://github.com/JPaiv/aws-eks-clickhouse/commit/ee387eaf2bb743d9f9a6048688e70b12d275bc01))
 * operator installs into the clickhouse namespace ([e09b0d6](https://github.com/JPaiv/aws-eks-clickhouse/commit/e09b0d645a68d7cede3dbe0c9e95cec6839316f1))
 * short helm release name for the operator chart ([5cbce20](https://github.com/JPaiv/aws-eks-clickhouse/commit/5cbce202e2b8739cc34f93d33b3969def1481d69))
