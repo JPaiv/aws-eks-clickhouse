@@ -1,5 +1,13 @@
 # Changelog
 
+## [1.4.0](https://github.com/JPaiv/aws-eks-clickhouse/compare/v1.3.1...v1.4.0) (2026-07-24)
+
+
+### Features
+
+* ack s3 controller onboarded from git ([ec379e5](https://github.com/JPaiv/aws-eks-clickhouse/commit/ec379e5bbb3f0c28a38bb8dd4ba6c9df99e1bbfd))
+* ack s3 controller onboarded from git ([352df66](https://github.com/JPaiv/aws-eks-clickhouse/commit/352df66abde3a9b0527437eb5fb7b065720743e3))
+
 ## [1.3.1](https://github.com/JPaiv/aws-eks-clickhouse/compare/v1.3.0...v1.3.1) (2026-07-23)
 
 
