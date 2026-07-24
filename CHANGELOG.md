@@ -1,5 +1,18 @@
 # Changelog
 
+## [1.5.0](https://github.com/JPaiv/aws-eks-clickhouse/compare/v1.4.0...v1.5.0) (2026-07-24)
+
+
+### Features
+
+* centralized observability — vm/vl on the hub, alloy on the spokes ([ad9b323](https://github.com/JPaiv/aws-eks-clickhouse/commit/ad9b32307e4b1881ddb42928b45fdc67d061c8fb))
+
+
+### Bug Fixes
+
+* grant the ack eks controller eks:ListNodegroups for teardown ([7625ac4](https://github.com/JPaiv/aws-eks-clickhouse/commit/7625ac492e65679ccf4adaac85744d273f90e299))
+* grant the ACK EKS controller eks:ListNodegroups for teardown ([d5be5a1](https://github.com/JPaiv/aws-eks-clickhouse/commit/d5be5a14aba8c166f59886b43cf116f968ee4ad0))
+
 ## [1.4.0](https://github.com/JPaiv/aws-eks-clickhouse/compare/v1.3.1...v1.4.0) (2026-07-24)
 
 
